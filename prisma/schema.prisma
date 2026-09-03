@@ -1,0 +1,113 @@
+// Prisma 6 — estável (v8 ainda em dev, evitar breaking changes)
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
+}
+
+enum ExamStatus {
+  draft
+  in_progress
+  completed
+}
+
+enum AplicadorStatus {
+  PENDENTE
+  APROVADO
+  REJEITADO
+}
+
+model Exam {
+  id            Int        @id @default(autoincrement()) @map("exam_id")
+  nome          String
+  qtdQuestoes   Int        @map("qtd_questoes")
+  notaSimbolica Int        @default(1000) @map("nota_simbolica")
+  status        ExamStatus @default(draft)
+  encerramento  DateTime?
+  createdAt     DateTime   @default(now()) @map("created_at")
+  updatedAt     DateTime   @updatedAt @map("updated_at")
+
+  participants Participant[]
+  questions    Question[]
+  aplicadores  Aplicador[]
+
+  @@map("exams")
+}
+
+model Adm {
+  id        Int      @id @default(autoincrement())
+  email     String   @unique
+  senha     String
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("adms")
+}
+
+model Aplicador {
+  id            Int             @id @default(autoincrement())
+  nome          String
+  status        AplicadorStatus @default(PENDENTE)
+  provaId       Int             @map("prova_id")
+  prova         Exam            @relation(fields: [provaId], references: [id], onDelete: Cascade)
+  aprovadoPorId Int?            @map("aprovado_por_id")
+  createdAt     DateTime        @default(now()) @map("created_at")
+
+  participants Participant[]
+
+  @@index([provaId])
+  @@map("aplicadores")
+}
+
+model Participant {
+  id          Int        @id @default(autoincrement())
+  nome        String
+  presenca    Boolean    @default(true)
+  redacaoNota Float?     @map("redacao_nota")
+  examId      Int        @map("exam_id")
+  exam        Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  aplicadorId Int?       @map("aplicador_id")
+  aplicador   Aplicador? @relation(fields: [aplicadorId], references: [id], onDelete: SetNull)
+
+  answers Answer[]
+
+  @@index([examId])
+  @@index([aplicadorId])
+  @@map("participantes")
+}
+
+model Question {
+  id            Int    @id @default(autoincrement())
+  numero        Int
+  peso          Int    @default(1)
+  correctAnswer String @map("question_correct_answer")
+  enunciado     String @db.Text
+  alternativas  Json
+  examId        Int    @map("exam_id")
+  exam          Exam   @relation(fields: [examId], references: [id], onDelete: Cascade)
+
+  answers Answer[]
+
+  @@unique([examId, numero])
+  @@index([examId])
+  @@map("questoes")
+}
+
+model Answer {
+  id               Int         @id @default(autoincrement())
+  alternativa      String
+  confidenceScore  Float?      @map("confidence_score")
+  manuallyReviewed Boolean     @default(false) @map("manually_reviewed")
+  userId           Int         @map("user_id")
+  questId          Int         @map("quest_id")
+  user             Participant @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quest            Question    @relation(fields: [questId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, questId])
+  @@index([userId])
+  @@map("resultados")
+}
