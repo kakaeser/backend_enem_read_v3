@@ -5,38 +5,38 @@
 ## 1. Infra & Prisma [X] parcial
 
 - [X] `prisma/schema.prisma` com 6 models + enums (Exam, Adm sem role, Aplicador PENDENTE|APROVADO|REJEITADO, Participant com aplicadorId, Question com Json, Answer sem examId redundante)
-- [X] `prisma.config.ts` minimal + `.env.example` com DATABASE_URL/DIRECT_URL Supabase + JWT_SECRET
-- [X] `npx prisma validate/migrate dev --name init/generate` verde em `aws-0-sa-east-1.pooler.supabase.com`
+- [X] `prisma.config.ts` minimal + `.env.example` com DATABASE_URL/DIRECT_URL Neon (pooler/direct) + JWT_SECRET/JWT_REFRESH_SECRET
+- [X] `npx prisma validate/migrate dev --name init/generate` verde em Neon `ep-plain-wind...neon.tech` + `migrate add_refresh_tokens`
 - [X] `src/prisma/prisma.service.ts` estende PrismaClient + `src/prisma/prisma.module.ts` @Global
 - [X] `src/app.module.ts` importa PrismaModule + fix build (generator default @prisma/client, remove src/generated)
 - [X] `npm run lint/build/test` verde (14 specs)
 - [ ] Remover `src/generated` do git se ainda rastreado + `npx prisma format` no CI
 - [X] Seed de restauração do backup legado `database.db` (SQLite, 2 edições, só gabarito) em `prisma/seed.ts` — lê `prisma/legacy/database.db` (copiado de `enem_read_v2/src/backend/database.db`), migra exams (ids 1 e 3), participantes (76), questoes (131 com correctAnswer → enunciado placeholder + alternativas A-E), resultados (4487 bulk), usando `id` explícito + `setval` sequences; Rodar via `npm run seed` → OK (5 batches)
 
-## 2. Auth JWT simples [ ]
+## 2. Auth JWT com refresh [X]
 
-- [ ] Instalar `@nestjs/jwt @nestjs/passport passport passport-jwt bcrypt` + `@types/*`
-- [ ] `src/auth/dto/login.dto.ts` (email, senha) com class-validator
-- [ ] `src/auth/jwt.strategy.ts` + `src/auth/guards/jwt-auth.guard.ts` (Bearer header, 1h expiração)
-- [ ] `src/auth/auth.service.ts` — `validateAdm(email, senha)` com bcrypt, `login` assina JWT
-- [ ] `src/auth/auth.controller.ts` — `POST /auth/login` (Adm) → `{access_token}`
-- [ ] `src/auth/auth.controller.ts` — `POST /auth/aplicador` `{nome, provaId}` → só se `Aplicador.status==APROVADO` e `Exam.status==in_progress`, senão 403
-- [ ] `AuthModule` importa `JwtModule.register({secret: env JWT_SECRET, signOptions: {expiresIn: '1h'}})`
-- [ ] Teste e2e: login ok 200, senha errada 401, aplicador PENDENTE 403, prova não in_progress 403
+- [X] Instalar `@nestjs/jwt @nestjs/passport passport passport-jwt bcrypt` + `@types/*` + `class-validator/class-transformer`
+- [X] `src/auth/dto/login.dto.ts` (email, senha) + `aplicador-login.dto.ts` + `refresh.dto.ts` com class-validator
+- [X] `src/auth/jwt.strategy.ts` + `src/auth/guards/jwt-auth.guard.ts` (Bearer, 15m) com validação no banco (lança 401 se Adm/Aplicador deletado ou reprovado)
+- [X] `prisma/schema.prisma` model `RefreshToken` (id cuid, admId FK, tokenHash sha256 unique, expiresAt, revoked) + `prisma/migrations/20260908130043_add_refresh_tokens`
+- [X] `src/auth/auth.service.ts` — `validateAdm` bcrypt, `issueTokens` (access 15m JWT_SECRET + refresh 7d JWT_REFRESH_SECRET, hash sha256 salvo), `loginAdm` → `{access_token, refresh_token}`, `refresh` (rotaciona, revoga antigo), `logout` (revoga), `loginAplicador` (sem refresh, só access 15m)
+- [X] `src/auth/auth.controller.ts` — `POST /auth/login` → `{access_token, refresh_token}`, `POST /auth/refresh` → novos tokens, `POST /auth/logout`, `POST /auth/aplicador` com gate APROVADO + in_progress
+- [X] `AuthModule` com `JwtModule` + `PassportModule` + `JwtStrategy` (injeta PrismaService), `ValidationPipe` global em `main.ts`
+- [X] Teste manual: `POST /auth/login admin@read.local/admin123` → 200 com ambos tokens, `refresh` rotaciona e antigo dá 401, `aplicador` bloqueado se PENDENTE
 
-## 3. Users (Adm) & Aplicadores [ ]
+## 3. Users (Adm) & Aplicadores [X]
 
 ### 3a. Users (=Adm)
-- [ ] `src/user/dto/create-user.dto.ts` + `update-user.dto.ts`
-- [ ] `src/user/user.service.ts` — hash bcrypt em create, email unique 409
-- [ ] `src/user/user.controller.ts` — `POST /users`, `GET /users`, `GET /users/:id`, `PATCH /users/:id`, `DELETE /users/:id` (guard JWT)
-- [ ] Teste e2e: criar Adm 201, duplicate email 409, sem token 401
+- [X] `src/user/dto/create-user.dto.ts` + `update-user.dto.ts` (class-validator)
+- [X] `src/user/user.service.ts` — hash bcrypt em create/update, email unique 409
+- [X] `src/user/user.controller.ts` — `POST /users`, `GET /users`, `GET /users/:id`, `PATCH /users/:id`, `DELETE /users/:id` (guard JwtAuthGuard, @Controller('users'))
+- [X] Teste manual: `POST /users novo@read.local` 201, `GET /users` lista 2, duplicate 409 (via service), sem token 401 (guard)
 
 ### 3b. Aplicadores
-- [ ] `src/aplicadores/dto/create-aplicador.dto.ts` (nome, provaId)
-- [ ] `src/aplicadores/aplicadores.service.ts` — create com status PENDENTE, valida prova existe
-- [ ] `src/aplicadores/aplicadores.controller.ts` — `POST /aplicadores` 201, `GET /aplicadores?provaId=`, `PATCH /aplicadores/:id/status` `{status: APROVADO|REJEITADO, aprovadoPorId}` só ADM
-- [ ] Teste e2e: fluxo PENDENTE→APROVADO→login aplicador libera, REJEITADO bloqueia
+- [X] `src/aplicadores/dto/create-aplicador.dto.ts` (nome, provaId) + `update-status.dto.ts` (IsEnum)
+- [X] `src/aplicadores/aplicadores.service.ts` — create PENDENTE com validação prova existe, findAll por provaId, updateStatus
+- [X] `src/aplicadores/aplicadores.controller.ts` — `POST /aplicadores` 201 público, `GET /aplicadores?provaId=`, `PATCH /:id/status` + `DELETE /:id` com JwtAuthGuard (AuthModule importado)
+- [X] Teste manual: `POST /aplicadores João prova 1` → PENDENTE, `PATCH /1/status APROVADO` 200, fluxo validado; CORS `app.enableCors({origin: FRONTEND_URL})` em `main.ts` para `start:dev` com frontend
 
 ## 4. Exams CRUD [ ]
 

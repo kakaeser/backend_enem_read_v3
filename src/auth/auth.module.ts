@@ -7,14 +7,14 @@ import { JwtStrategy } from './jwt.strategy.js';
 
 @Module({
   imports: [
-    PassportModule,
+    PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({
       secret: process.env.JWT_SECRET ?? 'dev-secret-change-me',
-      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN as any) ?? '1h' },
+      signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN as any) ?? '15m' },
     }),
   ],
   providers: [AuthService, JwtStrategy],
   controllers: [AuthController],
-  exports: [JwtModule],
+  exports: [JwtModule, PassportModule],
 })
 export class AuthModule {}
