@@ -1,7 +1,6 @@
 // Prisma 6 — estável (v8 ainda em dev, evitar breaking changes)
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  provider = "prisma-client-js"
 }
 
 datasource db {
@@ -45,7 +44,22 @@ model Adm {
   senha     String
   createdAt DateTime @default(now()) @map("created_at")
 
+  refreshTokens RefreshToken[]
+
   @@map("adms")
+}
+
+model RefreshToken {
+  id        String   @id @default(cuid())
+  admId     Int      @map("adm_id")
+  adm       Adm      @relation(fields: [admId], references: [id], onDelete: Cascade)
+  tokenHash String   @unique
+  expiresAt DateTime @map("expires_at")
+  revoked   Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([admId])
+  @@map("refresh_tokens")
 }
 
 model Aplicador {

@@ -25,10 +25,17 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
+> **ENEM da Read v3** — Refatoração do `enem_read` (FastAPI + SQLAlchemy) para NestJS. Sistema de correção/divulgação do ENEM da Read (8ª Igreja Presbiteriana, ~60 participantes/edição, ~70 questões + redação). Fluxo MVP manual: criar prova → questões/pesos em lote → participantes (CSV) → gabarito → respostas → notas ponderadas + redação → ranking. Ver `AGENTS.md` para modelo de dados e `prisma/schema.prisma` para schema.
+
 ## Project setup
 
 ```bash
 $ npm install
+$ cp .env.example .env  # preencha DATABASE_URL/DIRECT_URL (Neon) + JWT_SECRET/JWT_EXPIRES_IN
+$ npx prisma validate
+$ npx prisma migrate deploy  # ou migrate dev --name init em dev
+$ npx prisma generate
+$ npm run seed  # restaura backup legado database.db (opcional)
 ```
 
 ## Compile and run the project
@@ -44,18 +51,22 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
+> ESM: imports com `.js` (`from './app.module.js'`) obrigatório por `nodenext`. `PORT` vem de `process.env.PORT ?? 3000` (Cloud Run injeta).
+
 ## Run tests
 
 ```bash
 # unit tests
-$ npm run test
+$ npm run test        # vitest run, **/*.spec.ts
 
 # e2e tests
-$ npm run test:e2e
+$ npm run test:e2e    # vitest --config ./vitest.config.e2e.ts, **/*.e2e-spec.ts
 
 # test coverage
 $ npm run test:cov
 ```
+
+> Testes são **Vitest** (não Jest) com `vite-tsconfig-paths`, `globals: true`. Lint é **oxlint** (`npm run lint`), não ESLint. Format é `prettier` (`singleQuote`).
 
 ## Deployment
 
@@ -69,6 +80,8 @@ $ mau deploy
 ```
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+
+> **ENEM v3 usa Google Cloud Run (não Mau/AWS)** e **Neon Postgres** (não Supabase local). Build: `npm run build` → `dist/` (`nest build`, `deleteOutDir: true`). Deploy: `Dockerfile` + `gcloud run deploy --set-env-vars DATABASE_URL,DIRECT_URL,JWT_SECRET`. DB via `neon link` (`.neon`, `neon.ts`). Ver `AGENTS.md` para infra.
 
 ## Observability
 
