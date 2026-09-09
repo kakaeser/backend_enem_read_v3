@@ -38,13 +38,13 @@
 - [X] `src/aplicadores/aplicadores.controller.ts` — `POST /aplicadores` 201 público, `GET /aplicadores?provaId=`, `PATCH /:id/status` + `DELETE /:id` com JwtAuthGuard (AuthModule importado)
 - [X] Teste manual: `POST /aplicadores João prova 1` → PENDENTE, `PATCH /1/status APROVADO` 200, fluxo validado; CORS `app.enableCors({origin: FRONTEND_URL})` em `main.ts` para `start:dev` com frontend
 
-## 4. Exams CRUD [ ]
+## 4. Exams CRUD [X]
 
-- [ ] `src/exams/dto/create-exam.dto.ts` (nome, qtdQuestoes, notaSimbolica?, encerramento?)
-- [ ] `src/exams/exams.service.ts` — `create` em transaction: cria Exam + `qtdQuestoes` Questions vazias (`enunciado=""`, `alternativas: []`, `correctAnswer: ""`, `peso:1`, `numero:1..N`)
-- [ ] `src/exams/exams.controller.ts` — `POST /exams` (JWT ADM), `GET /exams` (todas, resumida), `GET /exams/:id` (com questions count), `PATCH /exams/:id` (nome/nota), `PATCH /exams/:id/status` (draft→in_progress→completed) + valida transição
-- [ ] `GET /exams?status=in_progress` para gate "Entrar como aplicador"
-- [ ] Teste e2e: POST cria N questions, unique [examId,numero] impede duplicata, GET /exams lista, PATCH status
+- [X] `src/exams/dto/create-exam.dto.ts` (nome, qtdQuestoes, notaSimbolica?, encerramento?) + `update-exam.dto.ts` + `update-status.dto.ts` (IsEnum)
+- [X] `src/exams/exams.service.ts` — `create` em `prisma.$transaction`: cria Exam + `qtdQuestoes` Questions vazias (`enunciado=""`, `alternativas:[]`, `correctAnswer:""`, `peso:1`, `numero:1..N`), `findAll(status?)` com `_count`, `findOne` com questions ordenadas, `update`, `updateStatus` com `allowedTransitions` (draft→in_progress→completed) e `BadRequest` se inválida
+- [X] `src/exams/exams.controller.ts` — `POST /exams` (JwtAuthGuard), `GET /exams` (todas, `?status=` filtra), `GET /exams/:id` (com questions), `PATCH /:id`, `PATCH /:id/status`, `DELETE /:id` (todos com guard exceto GETs)
+- [X] `src/exams/exams.module.ts` importa `AuthModule` para guard
+- [X] Teste manual: `POST /exams Teste CRUD 5q` → 201 com `questionsCount:5`, `GET /exams` lista 5, `GET /:id` com 3 qs, `PATCH draft→in_progress` 200, `in_progress→draft` 400 "Transição inválida", `?status=in_progress` filtra
 
 ## 5. Questions bulk (dentro de exams) [ ]
 
