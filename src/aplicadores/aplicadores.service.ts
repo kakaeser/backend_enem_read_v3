@@ -16,6 +16,15 @@ export class AplicadoresService {
     return aplicador;
   }
 
+  async findOne(id: number) {
+    const aplicador = await this.prisma.aplicador.findUnique({
+      where: { id },
+      include: { prova: { select: { id: true, nome: true, status: true } } },
+    });
+    if (!aplicador) throw new NotFoundException('Aplicador não encontrado');
+    return aplicador;
+  }
+
   async findAll(provaId?: number) {
     return this.prisma.aplicador.findMany({
       where: provaId ? { provaId } : undefined,

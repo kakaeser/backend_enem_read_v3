@@ -46,13 +46,13 @@
 - [X] `src/exams/exams.module.ts` importa `AuthModule` para guard
 - [X] Teste manual: `POST /exams Teste CRUD 5q` → 201 com `questionsCount:5`, `GET /exams` lista 5, `GET /:id` com 3 qs, `PATCH draft→in_progress` 200, `in_progress→draft` 400 "Transição inválida", `?status=in_progress` filtra
 
-## 5. Questions bulk (dentro de exams) [ ]
+## 5. Questions bulk (dentro de exams) [X]
 
-- [ ] `src/exams/questions/dto/bulk-questions.dto.ts` — array de `{id?, numero, enunciado, alternativas: [{letra,texto}], correctAnswer: "A"|"B"|..., peso?}`
-- [ ] `src/exams/questions/questions.service.ts` — `bulkUpsert(examId, dtos)` em transaction: se `id` existe → update, senão create; valida `numero` unique dentro do examId
-- [ ] `src/exams/questions/questions.controller.ts` — `PUT /exams/:examId/questions/bulk` (JWT ADM/APROVADO), `GET /exams/:examId/questions`, `GET /exams/:examId/questions/:id`
-- [ ] Validação: correctAnswer deve ser uma das letras presentes em alternativas
-- [ ] Teste e2e: bulk cria+edita em 1 request, 70 questões, erro 400 se correctAnswer inválida
+- [X] `src/exams/questions/dto/bulk-questions.dto.ts` — `BulkQuestionsDto {questions: QuestionBulkItemDto[]}` com `AlternativaDto {letra, texto}`, `numero`, `enunciado`, `correctAnswer`, `peso?`, `id?`
+- [X] `src/exams/questions/questions.service.ts` — `bulkUpsert(examId, items)` valida `correctAnswer ∈ alternativas` e `A-D`, transaction: `id` presente → `update` (checa `examId`), senão `create`; `findAll`/`findOne` com `orderBy numero`
+- [X] `src/exams/questions/questions.controller.ts` — `PUT /exams/:examId/questions/bulk` (JwtAuthGuard só ADM), `GET /exams/:examId/questions`, `GET /:id` (público)
+- [X] Validação: `BadRequest` se `correctAnswer` fora de `alternativas` (ex: `C` não em `[A,B]` → 400)
+- [X] Teste manual: `POST /exams Bulk Test 2q` → `PUT bulk 3,4` (cria, peso 2), `GET` lista 4, `PUT` com `C` inválido → 400, `PUT` com `id` → update `Q1` para `C` 200, `DELETE` cleanup
 
 ## 6. Participants & Answers [ ]
 

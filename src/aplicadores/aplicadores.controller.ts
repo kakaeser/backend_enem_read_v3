@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { AplicadoresService } from './aplicadores.service.js';
 import { CreateAplicadorDto } from './dto/create-aplicador.dto.js';
@@ -11,6 +11,13 @@ export class AplicadoresController {
   @Post()
   create(@Body() dto: CreateAplicadorDto) {
     return this.aplicadores.create(dto);
+  }
+
+  @UseGuards(JwtAuthGuard)
+  @Get('me')
+  me(@Req() req: any) {
+    // Usa sub do JWT (aplicador.id) — só retorna o próprio aplicador, sem expor lista
+    return this.aplicadores.findOne(req.user.sub);
   }
 
   @Get()

@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException, ForbiddenException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { createHash } from 'node:crypto';
@@ -85,15 +85,14 @@ export class AuthService {
     const aplicador = await this.prisma.aplicador.findFirst({
       where: { nome, provaId },
     });
-    if (!aplicador) throw new UnauthorizedException('Aplicador não encontrado para esta prova');
+    if (!aplicador) throw new NotFoundException('Aplicador não encontrado para esta prova');
     if (aplicador.status !== 'APROVADO') throw new ForbiddenException(`Aplicador com status ${aplicador.status} — aguarde aprovação do ADM`);
     const exam = await this.prisma.exam.findUnique({ where: { id: provaId } });
     if (!exam || exam.status !== 'in_progress') throw new ForbiddenException('Prova não está em andamento — login como aplicador bloqueado');
     const payload = { sub: aplicador.id, nome: aplicador.nome, type: 'aplicador' as const, provaId };
-    // Aplicador continua sem refresh (sessão curta)
     const access_token = await this.jwt.signAsync(payload, {
       secret: process.env.JWT_SECRET,
-      expiresIn: (process.env.JWT_EXPIRES_IN as any) ?? '15m',
+      expiresIn: (process.env.APLICADOR_JWT_EXPIRES_IN as any) ?? '6h',
     });
     return {
       access_token,
