@@ -54,20 +54,21 @@
 - [X] Validação: `BadRequest` se `correctAnswer` fora de `alternativas` (ex: `C` não em `[A,B]` → 400)
 - [X] Teste manual: `POST /exams Bulk Test 2q` → `PUT bulk 3,4` (cria, peso 2), `GET` lista 4, `PUT` com `C` inválido → 400, `PUT` com `id` → update `Q1` para `C` 200, `DELETE` cleanup
 
-## 6. Participants & Answers [ ]
+## 6. Participants & Answers [X]
 
 ### 6a. Participants
-- [ ] `src/exams/participants/` ou `src/participants/` — decidir: manter dentro de exams ou Módulo próprio? (sugestão: subpasta `exams/participants/` herdando examId)
-- [ ] `dto/create-participant.dto.ts` (nome, presenca?, aplicadorId?)
-- [ ] `service` — `create`, `createMany`, `importCsv` (multer + csv-parse), `update` (presenca, redacaoNota)
-- [ ] `controller` — `POST /exams/:examId/participants`, `POST /exams/:examId/participants/import` (multipart CSV), `GET /exams/:examId/participants`, `PATCH /participants/:id` (redacaoNota, presenca)
-- [ ] Teste e2e: importar CSV 60 linhas, presenca false não entra no ranking, redacaoNota nullable
+- [X] `src/exams/participants/` dentro de `ExamsModule` herdando `:examId` (decisão: subpasta, FK examId)
+- [X] DTOs: `create-participant.dto.ts` (nome, presenca?, aplicadorId?), `bulk-participants.dto.ts`, `update-presenca.dto.ts`, `update-redacao.dto.ts` (0–1000, nullable)
+- [X] `participants.service.ts` — `create`, `createMany`, `importExcel` (exceljs, 1ª aba, coluna A `nome`, pula cabeçalho e vazias; decisão: só `nome`, sem redação na planilha), `findAll` com `_count answers`, `updatePresenca`/`updateRedacao` com `assertOwned` (valida examId)
+- [X] `participants.controller.ts` — `POST /exams/:examId/participants`, `POST .../bulk`, `POST .../import` (FileInterceptor `file`, 2MB, valida .xlsx), `GET ...` , `PATCH .../:id/presenca` e `PATCH .../:id/redacao` dedicados (decisão: sem PATCH genérico), todos com JwtAuthGuard
+- [X] Teste manual: create + import xlsx 2 nomes (linha vazia ignorada) + list ordenada + `presenca false` + `redacao 850`
 
 ### 6b. Answers
-- [ ] `dto/create-answer.dto.ts` (userId, questId, alternativa)
-- [ ] `service` — `create` valida `user.examId == quest.examId` (já que Answer não tem examId), unique [userId, questId] 409 se duplicar, `update` alternativa, `manuallyReviewed` default false
-- [ ] `controller` — `POST /exams/:examId/answers/bulk` (array), `PATCH /answers/:id`, `GET /participants/:id/answers`
-- [ ] Teste e2e: resposta com examId divergente 400, duplicata 409, bulk 70 respostas por participante
+- [X] DTOs: `answer-item.dto.ts` (userId, questId, alternativa), `bulk-answers.dto.ts`, `update-answer.dto.ts`
+- [X] `answers.service.ts` — `bulkUpsert` valida `user.examId == quest.examId == :examId` (400 se provas diferentes), `upsert` em `unique [userId, questId]` (duplicata atualiza, não 409), `manuallyReviewed: true` ao lançar; `update(id)` e `findByParticipant` com `quest.numero/correctAnswer/peso`
+- [X] `answers.controller.ts` — `POST /exams/:examId/answers/bulk`, `PATCH /exams/:examId/answers/:id`, `GET .../answers/participant/:participantId`, todos com JwtAuthGuard
+- [X] Fix: `questions.service bulkUpsert` agora resolve update por `numero` existente quando sem `id` (corrige 500 de unique em prova recém-criada) + valida numeros duplicados no request + P2002 vira 400
+- [X] Teste manual: bulk 4 respostas, duplicata virou update, divergência 400 "provas diferentes", GET por participante, PATCH unitário
 
 ## 7. Results / Ranking (sem WebSocket) [ ]
 

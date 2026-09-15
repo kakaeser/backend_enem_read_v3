@@ -21,37 +21,40 @@ export class QuestionsService {
       }
     }
 
+    const seenNumeros = new Set<number>();
+    for (const item of items) {
+      if (seenNumeros.has(item.numero)) {
+        throw new BadRequestException(`Número ${item.numero} duplicado na requisição`);
+      }
+      seenNumeros.add(item.numero);
+    }
+
     return this.prisma.$transaction(async (tx) => {
+      const existingByNumero = new Map(
+        (await tx.question.findMany({ where: { examId }, select: { id: true, numero: true } })).map((q) => [q.numero, q.id]),
+      );
       const results: any[] = [];
       for (const item of items) {
-        if (item.id) {
-          // update
-          const exists = await tx.question.findUnique({ where: { id: item.id } });
-          if (!exists || exists.examId !== examId) throw new NotFoundException(`Questão id ${item.id} não encontrada nesta prova`);
-          const updated = await tx.question.update({
-            where: { id: item.id },
-            data: {
-              numero: item.numero,
-              enunciado: item.enunciado,
-              alternativas: item.alternativas as any,
-              correctAnswer: item.correctAnswer,
-              peso: item.peso ?? 1,
-            },
-          });
-          results.push(updated);
+        // id presente → update direto; sem id mas numero já existe na prova → update (evita 500 de unique)
+        const targetId = item.id ?? existingByNumero.get(item.numero);
+        const data = {
+          numero: item.numero,
+          enunciado: item.enunciado,
+          alternativas: item.alternativas as any,
+          correctAnswer: item.correctAnswer,
+          peso: item.peso ?? 1,
+        };
+        if (targetId) {
+          const exists = await tx.question.findUnique({ where: { id: targetId } });
+          if (!exists || exists.examId !== examId) throw new NotFoundException(`Questão id ${targetId} não encontrada nesta prova`);
+          results.push(await tx.question.update({ where: { id: targetId }, data }));
         } else {
-          // create
-          const created = await tx.question.create({
-            data: {
-              examId,
-              numero: item.numero,
-              enunciado: item.enunciado,
-              alternativas: item.alternativas as any,
-              correctAnswer: item.correctAnswer,
-              peso: item.peso ?? 1,
-            },
-          });
-          results.push(created);
+          try {
+            results.push(await tx.question.create({ data: { ...data, examId } }));
+          } catch (e: any) {
+            if (e?.code === 'P2002') throw new BadRequestException(`Número ${item.numero} já existe nesta prova`);
+            throw e;
+          }
         }
       }
       return results;
