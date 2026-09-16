@@ -8,12 +8,20 @@ import { ParticipantsController } from './participants/participants.controller.j
 import { ParticipantsService } from './participants/participants.service.js';
 import { QuestionsController } from './questions/questions.controller.js';
 import { QuestionsService } from './questions/questions.service.js';
+import { PublicResultsController } from './results/public-results.controller.js';
 import { ResultsController } from './results/results.controller.js';
 import { ResultsService } from './results/results.service.js';
 
 @Module({
   imports: [AuthModule],
   providers: [ExamsService, QuestionsService, ResultsService, ParticipantsService, AnswersService],
-  controllers: [ExamsController, QuestionsController, ResultsController, ParticipantsController, AnswersController],
+  controllers: [
+    ExamsController,
+    QuestionsController,
+    ResultsController,
+    PublicResultsController,
+    ParticipantsController,
+    AnswersController,
+  ],
 })
 export class ExamsModule {}

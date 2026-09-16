@@ -70,13 +70,12 @@
 - [X] Fix: `questions.service bulkUpsert` agora resolve update por `numero` existente quando sem `id` (corrige 500 de unique em prova recém-criada) + valida numeros duplicados no request + P2002 vira 400
 - [X] Teste manual: bulk 4 respostas, duplicata virou update, divergência 400 "provas diferentes", GET por participante, PATCH unitário
 
-## 7. Results / Ranking (sem WebSocket) [ ]
+## 7. Results / Ranking (sem WebSocket) [X]
 
-- [ ] `src/exams/results/results.service.ts` — `calcNota(participantId)` = `sum(peso*acerto)/sum(pesos)*notaSimbolica + (redacaoNota||0)`, `getRanking(examId)` ordena desc + desempate por nome
-- [ ] `src/exams/results/results.controller.ts` — `GET /exams/:examId/results` (ADM/Aplicador, sem guarda de data) e `GET /resultados?examId=` público com guarda: `if (now < exam.encerramento + 2 dias) throw 403 {message: "Resultados disponíveis em 2 dias"}` (sem cron, liberação por link)
-- [ ] `GET /resultados/:participantId` detalhe → retorna `[{numero, enunciado, alternativas, correctAnswer, marcada, acertou, peso}]`
-- [ ] `GET /exams/:examId/stats` — média, distribuição notas, acertos por questão (opcional p/ export)
-- [ ] Teste e2e: ranking ordenado correto com peso, redacao soma, 403 antes de 2 dias, 200 após, detalhe mostra marcada vs correta
+- [X] `src/exams/results/results.service.ts` — `calcNota` = `sum(peso*acerto)/sum(pesos)*notaSimbolica + (redacaoNota??0)`; `getRanking` ordena `total` desc + desempate `nome`, só `presenca=true`, com `stats` embutido (media/maior/menor/totalParticipantes/acertosPorQuestao); `getDetail` retorna `{participant, notas:{ponderada,redacao,total}, questoes}` ordenado; `assertDivulgado` (403 se não `completed` ou `now < encerramento+2d`); `listDivulgados` (só `completed` + 2d)
+- [X] `results.controller.ts` — `GET /exams/:examId/results` + `GET .../:participantId` com JwtAuthGuard, sem guarda de data (decisão: path param `/resultados/:examId`, sem query `?examId=`)
+- [X] `public-results.controller.ts` (novo, sem guard) — `GET /resultados` (tabela, só divulgadas), `GET /resultados/:examId`, `GET /resultados/:examId/:participantId` (drawer: 1 request traz tudo, `?participante=`/`?questao=` só no front)
+- [X] Teste manual no Neon: ranking 999 ordenado com `total=ponderada+redacao`, detalhe com marcada/correta, interno sem token 401, tabela exclui `in_progress`, 999 público 403, prova recém-`completed` 403, após forçar `encerramento-3d` tabela+ranking 200 (prova teste removida)
 
 ## 8. E2E & Qualidade [ ]
 
