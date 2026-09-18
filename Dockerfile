@@ -15,6 +15,9 @@ RUN npm run build
 FROM node:22-slim AS prod
 WORKDIR /app
 ENV NODE_ENV=production
+# Prisma precisa do OpenSSL em runtime para detectar o Query Engine
+# (sem ele, cai em "could not locate the Query Engine for debian-openssl-1.1.x")
+RUN apt-get update && apt-get install -y --no-install-recommends openssl ca-certificates && rm -rf /var/lib/apt/lists/*
 RUN npm install -g npm@11
 COPY package.json package-lock.json ./
 RUN npm ci --omit=dev && npm cache clean --force
