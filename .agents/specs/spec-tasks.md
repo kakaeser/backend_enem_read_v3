@@ -19,7 +19,7 @@
 - [X] `src/auth/dto/login.dto.ts` (email, senha) + `aplicador-login.dto.ts` + `refresh.dto.ts` com class-validator
 - [X] `src/auth/jwt.strategy.ts` + `src/auth/guards/jwt-auth.guard.ts` (Bearer, 15m) com validação no banco (lança 401 se Adm/Aplicador deletado ou reprovado)
 - [X] `prisma/schema.prisma` model `RefreshToken` (id cuid, admId FK, tokenHash sha256 unique, expiresAt, revoked) + `prisma/migrations/20260908130043_add_refresh_tokens`
-- [X] `src/auth/auth.service.ts` — `validateAdm` bcrypt, `issueTokens` (access 15m JWT_SECRET + refresh 7d JWT_REFRESH_SECRET, hash sha256 salvo), `loginAdm` → `{access_token, refresh_token}`, `refresh` (rotaciona, revoga antigo), `logout` (revoga), `loginAplicador` (sem refresh, só access 15m)
+- [X] `src/auth/auth.service.ts` — `validateAdm` bcrypt, `issueTokens` (access 15m JWT_SECRET + refresh 7d JWT_REFRESH_SECRET, hash sha256 salvo), `loginAdm` → `{access_token, refresh_token}`, `refresh` (rotaciona, revoga antigo), `logout` (revoga), `loginAplicador` (sem refresh, access **6h** via `APLICADOR_JWT_EXPIRES_IN` — cobre a prova inteira; `JwtStrategy` continua barrando via `status` no banco)
 - [X] `src/auth/auth.controller.ts` — `POST /auth/login` → `{access_token, refresh_token}`, `POST /auth/refresh` → novos tokens, `POST /auth/logout`, `POST /auth/aplicador` com gate APROVADO + in_progress
 - [X] `AuthModule` com `JwtModule` + `PassportModule` + `JwtStrategy` (injeta PrismaService), `ValidationPipe` global em `main.ts`
 - [X] Teste manual: `POST /auth/login admin@read.local/admin123` → 200 com ambos tokens, `refresh` rotaciona e antigo dá 401, `aplicador` bloqueado se PENDENTE
@@ -35,7 +35,7 @@
 ### 3b. Aplicadores
 - [X] `src/aplicadores/dto/create-aplicador.dto.ts` (nome, provaId) + `update-status.dto.ts` (IsEnum)
 - [X] `src/aplicadores/aplicadores.service.ts` — create PENDENTE com validação prova existe, findAll por provaId, updateStatus
-- [X] `src/aplicadores/aplicadores.controller.ts` — `POST /aplicadores` 201 público, `GET /aplicadores?provaId=`, `PATCH /:id/status` + `DELETE /:id` com JwtAuthGuard (AuthModule importado)
+- [X] `src/aplicadores/aplicadores.controller.ts` — `POST /aplicadores` 201 público, `GET /aplicadores?provaId=`, `GET /aplicadores/me` (JwtAuthGuard, usa `sub` do JWT — retorna só o próprio, sem expor lista; usado pelo polling 5s do front), `PATCH /:id/status` + `DELETE /:id` com JwtAuthGuard (AuthModule importado)
 - [X] Teste manual: `POST /aplicadores João prova 1` → PENDENTE, `PATCH /1/status APROVADO` 200, fluxo validado; CORS `app.enableCors({origin: FRONTEND_URL})` em `main.ts` para `start:dev` com frontend
 
 ## 4. Exams CRUD [X]
@@ -59,7 +59,7 @@
 ### 6a. Participants
 - [X] `src/exams/participants/` dentro de `ExamsModule` herdando `:examId` (decisão: subpasta, FK examId)
 - [X] DTOs: `create-participant.dto.ts` (nome, presenca?, aplicadorId?), `bulk-participants.dto.ts`, `update-presenca.dto.ts`, `update-redacao.dto.ts` (0–1000, nullable)
-- [X] `participants.service.ts` — `create`, `createMany`, `importExcel` (exceljs, 1ª aba, coluna A `nome`, pula cabeçalho e vazias; decisão: só `nome`, sem redação na planilha), `findAll` com `_count answers`, `updatePresenca`/`updateRedacao` com `assertOwned` (valida examId)
+- [X] `participants.service.ts` — `create`/`createMany` (default `presenca true`), `importExcel` (exceljs, 1ª aba, coluna A `nome`, pula cabeçalho e vazias; decisão: só `nome`, sem redação na planilha; importados nascem `presenca false` até confirmação), `findAll` com `_count answers`, `updatePresenca`/`updateRedacao`/`remove` com `assertOwned` (valida examId)
 - [X] `participants.controller.ts` — `POST /exams/:examId/participants`, `POST .../bulk`, `POST .../import` (FileInterceptor `file`, 2MB, valida .xlsx), `GET ...` , `PATCH .../:id/presenca` e `PATCH .../:id/redacao` dedicados (decisão: sem PATCH genérico), todos com JwtAuthGuard
 - [X] Teste manual: create + import xlsx 2 nomes (linha vazia ignorada) + list ordenada + `presenca false` + `redacao 850`
 
@@ -72,21 +72,22 @@
 
 ## 7. Results / Ranking (sem WebSocket) [X]
 
-- [X] `src/exams/results/results.service.ts` — `calcNota` = `sum(peso*acerto)/sum(pesos)*notaSimbolica + (redacaoNota??0)`; `getRanking` ordena `total` desc + desempate `nome`, só `presenca=true`, com `stats` embutido (media/maior/menor/totalParticipantes/acertosPorQuestao); `getDetail` retorna `{participant, notas:{ponderada,redacao,total}, questoes}` ordenado; `assertDivulgado` (403 se não `completed` ou `now < encerramento+2d`); `listDivulgados` (só `completed` + 2d)
+- [X] `src/exams/results/results.service.ts` — `calcNota` = `sum(peso*acerto)/sum(pesos)*notaSimbolica + (redacaoNota??0)`; `getRanking` ordena `total` desc + desempate `nome`, só `presenca=true`, com `stats` embutido (media/maior/menor/totalParticipantes/acertosPorQuestao) e `respondidas: answers.length` por linha (front exibe "-" se `respondidas===0 && redacao==null`); `getDetail` retorna `{participant, notas:{ponderada,redacao,total}, questoes}` ordenado; `assertDivulgado` (403 se não `completed` ou `now < encerramento+2d`); `listDivulgados` (só `completed` + 2d)
 - [X] `results.controller.ts` — `GET /exams/:examId/results` + `GET .../:participantId` com JwtAuthGuard, sem guarda de data (decisão: path param `/resultados/:examId`, sem query `?examId=`)
 - [X] `public-results.controller.ts` (novo, sem guard) — `GET /resultados` (tabela, só divulgadas), `GET /resultados/:examId`, `GET /resultados/:examId/:participantId` (drawer: 1 request traz tudo, `?participante=`/`?questao=` só no front)
 - [X] Teste manual no Neon: ranking 999 ordenado com `total=ponderada+redacao`, detalhe com marcada/correta, interno sem token 401, tabela exclui `in_progress`, 999 público 403, prova recém-`completed` 403, após forçar `encerramento-3d` tabela+ranking 200 (prova teste removida)
 
-## 8. E2E & Qualidade [ ]
+## 8. E2E & Qualidade [X]
 
-- [ ] Único seam HTTP: `test/app.e2e-spec.ts` usa `Test.createTestingModule(AppModule)` + `supertest` (já existe, expandir)
-- [ ] Fluxo completo e2e: `POST /auth/login` → `POST /exams` (qtd 70) → `PUT bulk questions` → `POST participants import` → `POST answers bulk` → `PATCH redacaoNota` → `GET /exams/:id/results` → `GET /resultados` (espera 403 antes, 200 após mock de data)
-- [ ] Unit só para `ResultsService.calcNota` (lógica ponderada isolada, sem DB)
-- [ ] `npm run lint && npm run build && npm run test && npm run test:e2e && npx prisma validate` verde no CI
-- [ ] `Dockerfile` + `gcloud run deploy` com `DATABASE_URL,DIRECT_URL,JWT_SECRET` (não usar `nest deploy`)
+- [X] Decisão: e2e com **Prisma mockado** (`test/mocks/in-memory-prisma.ts`, sem Neon) — seam único HTTP via `Test.createTestingModule(AppModule)` + `supertest` + `overrideProvider(PrismaService)`
+- [X] `test/enem-flow.e2e-spec.ts` (14 its): login 401/201, refresh rotação + revogação 401, exam + N vazias, bulk gabarito + 400 inválido, participant + import xlsx + `PATCH presenca/redacao`, answers bulk + divergência 400, ranking `total=ponderada+redacao`, detalhe marcada/correta, tabela exclui `in_progress`, público 403 → `completed`+`encerramento-3d` 200, cleanup cascade
+- [X] `src/exams/results/results.service.spec.ts` unit real (tudo certo/parcial/sem respostas/redacao null/ordenação+respondidas/ausente fora) + demais `*.spec.ts` com `InMemoryPrisma` e `overrideGuard(JwtAuthGuard)`
+- [X] `npm run lint && npm run build && npm run test (19) && npm run test:e2e (15) && npx prisma validate` verdes
+- [X] Fixes achados pelo e2e: `participants.service` default `presenca` → `true` (estava `false`, sobrescrevia o DB default) e `auth.service issueTokens` com `jti: randomUUID()` (dois logins no mesmo segundo geravam refresh idêntico → P2002 500)
+- [X] `Dockerfile` (node:22-slim multi-stage, `prisma generate` no build, `migrate deploy && node dist/main` no start) — deploy: `gcloud run deploy --set-env-vars DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL` (não usar `nest deploy`)
 
-## 9. Docs & Housekeeping [ ]
+## 9. Docs & Housekeeping [X] parcial
 
-- [ ] Atualizar `AGENTS.md` removendo Socket.IO se confirmado sem WS (ainda menciona rank:update)
-- [ ] Atualizar `README.md` com `GET /resultados` guarda 2 dias
+- [X] `AGENTS.md` sincronizado: sem Socket.IO, Neon (não Supabase), JWT com refresh + aplicador 6h, data model real (sem `role`, `status` enum, sem `exam_id` em Answer, `RefreshToken`), API implementada por módulo, `presenca` import=false, `PORT 3030`, testes com mock, structure com `prisma/seed-test.ts` + `test/mocks` + `Dockerfile`
+- [X] `README.md` (edição incremental, boilerplate Nest preservado): `GET /resultados` + guarda 2 dias, `.xlsx` no fluxo, `seed:test`, `PORT 3030`, testes com mock, envs completas no deploy
 - [ ] `specs/spec-enem-read-v3-mvp.md` publicado no tracker com label `ready-for-agent` após `/setup-matt-pocock-skills`

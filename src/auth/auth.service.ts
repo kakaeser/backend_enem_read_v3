@@ -1,7 +1,7 @@
 import { Injectable, UnauthorizedException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { createHash } from 'node:crypto';
+import { createHash, randomUUID } from 'node:crypto';
 import { PrismaService } from '../prisma/prisma.service.js';
 
 function hashToken(token: string) {
@@ -29,10 +29,13 @@ export class AuthService {
       secret: process.env.JWT_SECRET,
       expiresIn: (process.env.JWT_EXPIRES_IN as any) ?? '15m',
     });
-    const refresh_token = await this.jwt.signAsync(payload, {
-      secret: process.env.JWT_REFRESH_SECRET,
-      expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN as any) ?? '7d',
-    });
+    const refresh_token = await this.jwt.signAsync(
+      { ...payload, jti: randomUUID() },
+      {
+        secret: process.env.JWT_REFRESH_SECRET,
+        expiresIn: (process.env.JWT_REFRESH_EXPIRES_IN as any) ?? '7d',
+      },
+    );
     const tokenHash = hashToken(refresh_token);
     const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7d
     await this.prisma.refreshToken.create({

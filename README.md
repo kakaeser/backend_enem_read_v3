@@ -25,17 +25,20 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
-> **ENEM da Read v3** — Refatoração do `enem_read` (FastAPI + SQLAlchemy) para NestJS. Sistema de correção/divulgação do ENEM da Read (8ª Igreja Presbiteriana, ~60 participantes/edição, ~70 questões + redação). Fluxo MVP manual: criar prova → questões/pesos em lote → participantes (CSV) → gabarito → respostas → notas ponderadas + redação → ranking. Ver `AGENTS.md` para modelo de dados e `prisma/schema.prisma` para schema.
+> **ENEM da Read v3** — Refatoração do `enem_read` (FastAPI + SQLAlchemy) para NestJS. Sistema de correção/divulgação do ENEM da Read (8ª Igreja Presbiteriana, ~60 participantes/edição, ~70 questões + redação). Fluxo MVP manual: criar prova → questões/pesos em lote → participantes (Excel `.xlsx`, só coluna `nome`) → gabarito → respostas → notas ponderadas + redação → ranking. Ver `AGENTS.md` para modelo de dados e `prisma/schema.prisma` para schema.
+>
+> **Resultados públicos:** `GET /resultados` (tabela, só provas `completed` + 2 dias), `GET /resultados/:examId` (ranking) e `GET /resultados/:examId/:participantId` (detalhe com enunciado/alternativas/marcada/correta + `notas {ponderada, redacao, total}`). Antes de `encerramento + 2 dias` retornam `403` (divulgação por link, sem cron nem WebSocket).
 
 ## Project setup
 
 ```bash
 $ npm install
-$ cp .env.example .env  # preencha DATABASE_URL/DIRECT_URL (Neon) + JWT_SECRET/JWT_EXPIRES_IN
+$ cp .env.example .env  # preencha DATABASE_URL/DIRECT_URL (Neon) + JWT_SECRET/JWT_REFRESH_SECRET/APLICADOR_JWT_EXPIRES_IN + FRONTEND_URL
 $ npx prisma validate
 $ npx prisma migrate deploy  # ou migrate dev --name init em dev
 $ npx prisma generate
-$ npm run seed  # restaura backup legado database.db (opcional)
+$ npm run seed       # restaura backup legado database.db (opcional, dados reais — gitignored)
+$ npm run seed:test  # prova teste id 999 (30q/10parts, prompt iniciar/limpar, não apaga o resto)
 ```
 
 ## Compile and run the project
@@ -51,7 +54,7 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
-> ESM: imports com `.js` (`from './app.module.js'`) obrigatório por `nodenext`. `PORT` vem de `process.env.PORT ?? 3000` (Cloud Run injeta).
+> ESM: imports com `.js` (`from './app.module.js'`) obrigatório por `nodenext`. `PORT` vem de `process.env.PORT ?? 3030` (Cloud Run injeta). CORS liberado via `FRONTEND_URL` (lista por vírgula).
 
 ## Run tests
 
@@ -66,7 +69,7 @@ $ npm run test:e2e    # vitest --config ./vitest.config.e2e.ts, **/*.e2e-spec.ts
 $ npm run test:cov
 ```
 
-> Testes são **Vitest** (não Jest) com `vite-tsconfig-paths`, `globals: true`. Lint é **oxlint** (`npm run lint`), não ESLint. Format é `prettier` (`singleQuote`).
+> Testes são **Vitest** (não Jest) com `vite-tsconfig-paths`, `globals: true`. Lint é **oxlint** (`npm run lint`), não ESLint. Format é `prettier` (`singleQuote`). Testes **não usam o Neon**: `test/mocks/in-memory-prisma.ts` substitui o `PrismaService`; e2e do fluxo completo em `test/enem-flow.e2e-spec.ts`.
 
 ## Deployment
 
@@ -81,7 +84,7 @@ $ mau deploy
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
-> **ENEM v3 usa Google Cloud Run (não Mau/AWS)** e **Neon Postgres** (não Supabase local). Build: `npm run build` → `dist/` (`nest build`, `deleteOutDir: true`). Deploy: `Dockerfile` + `gcloud run deploy --set-env-vars DATABASE_URL,DIRECT_URL,JWT_SECRET`. DB via `neon link` (`.neon`, `neon.ts`). Ver `AGENTS.md` para infra.
+> **ENEM v3 usa Google Cloud Run (não Mau/AWS)** e **Neon Postgres** (não Supabase local). Build: `npm run build` → `dist/` (`nest build`, `deleteOutDir: true`). Deploy: `Dockerfile` (multi-stage, `migrate deploy && node dist/main`) + `gcloud run deploy --set-env-vars DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL`. DB via `neon link` (`.neon`, `neon.ts`). Ver `AGENTS.md` para infra.
 
 ## Observability
 
