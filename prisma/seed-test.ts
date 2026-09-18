@@ -46,10 +46,10 @@ async function createTestData() {
   });
   console.log(`[seed-test] Exam criado id=${exam.id}`);
 
-  const letters = ['A', 'B', 'C', 'D', 'E'] as const;
+  const letters = ['A', 'B', 'C', 'D'] as const;
   const questions: { examId: number; numero: number; peso: number; correctAnswer: string; enunciado: string; alternativas: any }[] = [];
   for (let n = 1; n <= 30; n++) {
-    const correct = letters[Math.floor(Math.random() * 5)];
+    const correct = letters[Math.floor(Math.random() * 4)];
     questions.push({
       examId: TEST_EXAM_ID,
       numero: n,
@@ -80,7 +80,7 @@ async function createTestData() {
     const answers = qCreated.map((q) => ({
       userId: participant.id,
       questId: q.id,
-      alternativa: letters[Math.floor(Math.random() * 5)],
+      alternativa: letters[Math.floor(Math.random() * 4)],
       confidenceScore: null,
       manuallyReviewed: false,
     }));
