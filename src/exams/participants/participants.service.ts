@@ -19,7 +19,7 @@ export class ParticipantsService {
       data: {
         examId,
         nome: dto.nome,
-        presenca: dto.presenca ?? true,
+        presenca: dto.presenca ?? false,
         aplicadorId: dto.aplicadorId ?? null,
       },
     });
@@ -31,7 +31,7 @@ export class ParticipantsService {
       data: dtos.map((d) => ({
         examId,
         nome: d.nome,
-        presenca: d.presenca ?? true,
+        presenca: d.presenca ?? false,
         aplicadorId: d.aplicadorId ?? null,
       })),
     });
