@@ -58,4 +58,3 @@ O ping **não** consulta Postgres (Neon pode cold start na primeira request real
 ## Gotchas
 
 - **Startup:** `Dockerfile` roda `prisma migrate deploy` antes de `node dist/main` — cold start pode levar 30s–2min.
-- **Observe:** cada request passa pelo instrument NestJS Observe; evite ping excessivo (< 5 min) se gerar ruído.
