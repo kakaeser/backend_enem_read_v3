@@ -84,7 +84,7 @@ $ mau deploy
 
 With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
 
-> **ENEM v3** usa **Neon Postgres** (não Supabase local). Deploy principal documentado: **Google Cloud Run** (`Dockerfile`, `gcloud run deploy --set-env-vars DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL`). Alternativa **Render (free)**: ping em `GET /` a cada ~14 min, **só 06:00–23:59 Brasília** (GitHub Action) — ver [`docs/render-keep-alive.md`](docs/render-keep-alive.md). DB via `neon link` (`.neon`, `neon.ts`). Ver `AGENTS.md` para infra.
+> **ENEM v3** usa **Neon Postgres** (não Supabase local). Deploy principal documentado: **Google Cloud Run** (`Dockerfile`, `gcloud run deploy --set-env-vars DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL`). Alternativa **Render (free)**: ping em `GET /` via [cron-job.org](https://cron-job.org) (~14 min, **06:00–23:59 Brasília**) — ver [`docs/render-keep-alive.md`](docs/render-keep-alive.md). DB via `neon link` (`.neon`, `neon.ts`). Ver `AGENTS.md` para infra.
 
 ## Observability
 
