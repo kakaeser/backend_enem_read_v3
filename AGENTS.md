@@ -7,10 +7,10 @@
 
 ## Stack
 - NestJS 12 + TypeScript 6 + Node, ESM (`"type": "module"`, `module`/`moduleResolution`: `nodenext`).
-- **Prisma 6 + Postgres** (v6 LTS; não migrar para v7/v8 sem motivo). DB hospedado em **Neon** (`neon link`, `neon.ts`, `.neon`), app em **Google Cloud Run** + front no **Cloudflare Pages**. Legado usava SQLAlchemy `Base` em `backend/config/base.py`.
+- **Prisma 6 + Postgres** (v6 LTS; não migrar para v7/v8 sem motivo). DB hospedado em **Neon** (`neon link`, `neon.ts`, `.neon`), app em **Render** + front no **Cloudflare Pages**. Legado usava SQLAlchemy `Base` em `backend/config/base.py`.
 - Auth: **JWT com refresh** — Adm: access 15m (`JWT_SECRET`) + refresh 7d (`JWT_REFRESH_SECRET`, hash sha256 em `refresh_tokens`, rotação com `jti`); Aplicador: access **6h** (`APLICADOR_JWT_EXPIRES_IN`), sem refresh. `Bearer` header. `JwtStrategy.validate` confere existência/`APROVADO` no banco a cada request.
 - **Sem WebSocket/Realtime** — ranking estático, divulgação por link 2 dias após `encerramento` (decisão registrada no spec).
-- Entrypoints: `src/main.ts` (bootstrap com `ObserveInstrument` + `ValidationPipe` global + CORS via `FRONTEND_URL`), `src/app.module.ts`.
+- Entrypoints: `src/main.ts` (bootstrap com `ValidationPipe` global + CORS via `FRONTEND_URL`), `src/app.module.ts`.
 
 ## Data Model (legado → Prisma, ver `prisma/schema.prisma`)
 - `Exam` (`exams`, PK `exam_id`): `nome`, `qtdQuestoes`, `notaSimbolica` default 1000, `createdAt/updatedAt/encerramento`, `status: draft|in_progress|completed` (transição validada `draft→in_progress→completed`; `encerramento` setado automaticamente ao completar).
@@ -33,8 +33,7 @@
 
 ## Infra / Deploy
 - **DB: Neon Postgres** (`neon link --project-id hidden-smoke-48757721`, `neon.ts`, `.neon` gitignored) — `DATABASE_URL` (pooler) + `DIRECT_URL` (= `DATABASE_URL_UNPOOLED`, direct) em `.env` (gitignored). `prisma/legacy/database.db` (backup real) também gitignored — nunca commitar.
-- **App: Google Cloud Run** — `PORT` em `src/main.ts:14` (`process.env.PORT ?? 3030`, Cloud Run injeta `PORT`). `Dockerfile` multi-stage (node:22-slim, `prisma generate` no build, `migrate deploy && node dist/main` no start). Deploy: `gcloud run deploy --set-env-vars DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL` (nunca `nest deploy`/`mau`). Front no Cloudflare Pages → `FRONTEND_URL` aceita lista por vírgula (`"https://x.pages.dev,http://localhost:3001"`).
-- Não comitar `YOUR_APP_KEY`/`YOUR_APP_SECRET` de `src/app.module.ts`.
+- **App: Render** — `PORT` em `src/main.ts` (`process.env.PORT ?? 3030`; Render injeta `PORT`). `Dockerfile` multi-stage (node:22-slim, `prisma generate` no build, `migrate deploy && node dist/main` no start) ou build nativo Render. Env: `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL`. Keep-alive free tier: [`docs/render-keep-alive.md`](docs/render-keep-alive.md) (cron-job.org em `GET /`). Front no Cloudflare Pages → `FRONTEND_URL` lista por vírgula.
 
 ## Package Manager
 - `npm` — lockfile `package-lock.json`. Use `npm install`, não yarn/pnpm.
@@ -65,7 +64,6 @@ Single test: `npx vitest run src/app.controller.spec.ts` ou `npx vitest run -t "
 - **Testes não usam o Neon** — `test/mocks/in-memory-prisma.ts` substitui o `PrismaService` via `overrideProvider` (unit + e2e). Stubs `*.spec.ts` precisam prover o mock (e `overrideGuard(JwtAuthGuard)`, que exige `AuthModuleOptions` fora do módulo). E2e cobre o fluxo completo em `test/enem-flow.e2e-spec.ts`.
 - **Prisma ESM** — `prisma generate` gera client ESM; importar de `@prisma/client` funciona com `nodenext` mas rodar `prisma` via `npx` precisa de `DATABASE_URL` no env.
 - **Sem hooks/CI** — `git hooks` são samples. Rode `npm run lint` + `npm run test` antes do push.
-- **Observability** — `src/app.module.ts:6` com placeholder `YOUR_APP_KEY`/`YOUR_APP_SECRET`. Não comitar chaves reais.
 - **Skills** — projeto usa `.agents/skills/` como padrão (`opencode.json:4` → `skills.paths: [".agents/skills", ".opencode/skills"]`), instalado via `npx skills add`. Pasta ignorada em `.gitignore:55`, mas `skills-lock.json` deve ser commitado. Requer restart do opencode após instalar.
 
 ## Structure
@@ -84,7 +82,7 @@ dist/         build output (gitignored)
 .agents/
 ├── specs/    # spec-enem-read-v3-mvp.md + spec-tasks.md ([X]/[ ] rastreia progresso)
 └── skills/   # gitignored, restaurar via npx skills experimental_install
-Dockerfile    # Cloud Run
+Dockerfile    # Render / Docker (migrate deploy + node dist/main)
 ```
 Single package, sem monorepo.
 

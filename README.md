@@ -54,7 +54,7 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
-> ESM: imports com `.js` (`from './app.module.js'`) obrigatório por `nodenext`. `PORT` vem de `process.env.PORT ?? 3030` (Cloud Run injeta). CORS liberado via `FRONTEND_URL` (lista por vírgula).
+> ESM: imports com `.js` (`from './app.module.js'`) obrigatório por `nodenext`. `PORT` vem de `process.env.PORT ?? 3030` (Render injeta). CORS liberado via `FRONTEND_URL` (lista por vírgula).
 
 ## Run tests
 
@@ -73,33 +73,15 @@ $ npm run test:cov
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+> **ENEM v3 — infra atual:** **Neon Postgres** (banco) + **Render** (API, plano free) + **Cloudflare Pages** (front). Ver [`AGENTS.md`](AGENTS.md) e [`docs/render-keep-alive.md`](docs/render-keep-alive.md).
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Build local: `npm run build` → `dist/`. Produção usa o [`Dockerfile`](Dockerfile) (multi-stage, `prisma migrate deploy && node dist/main` no start) ou build nativo do Render.
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+**Variáveis no Render** (Environment): `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL` (URLs do front separadas por vírgula, ex. `https://seu-projeto.pages.dev,http://localhost:3001`). Ver [`.env.example`](.env.example).
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+**Keep-alive (Render free):** o serviço dorme ~15 min sem HTTP. Ping `GET /` via [cron-job.org](https://cron-job.org) a cada 10–14 min (janela **06:00–23:59** Brasília recomendada) — detalhes em [`docs/render-keep-alive.md`](docs/render-keep-alive.md).
 
-> **ENEM v3** usa **Neon Postgres** (não Supabase local). Deploy principal documentado: **Google Cloud Run** (`Dockerfile`, `gcloud run deploy --set-env-vars DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL`). Alternativa **Render (free)**: ping em `GET /` via [cron-job.org](https://cron-job.org) (~14 min, **06:00–23:59 Brasília**) — ver [`docs/render-keep-alive.md`](docs/render-keep-alive.md). DB via `neon link` (`.neon`, `neon.ts`). Ver `AGENTS.md` para infra.
-
-## Observability
-
-In production applications, observability is essential for understanding how your system behaves, detecting issues early, and maintaining reliable performance.
-
-[NestJS Observe](https://observe.nestjs.com) automatically instruments your NestJS application, giving you deep visibility into your system with minimal setup:
-
-- **Distributed tracing:** Follow requests across services and understand how they flow through your system.
-- **Waterfall analysis:** Visualize request execution and identify slow operations, bottlenecks, and unexpected delays.
-- **Performance analysis:** Analyze application performance in real time and quickly pinpoint areas that need optimization.
-- **Metrics:** Track key application and infrastructure metrics to understand system health and performance trends.
-- **Logging:** Centralize and correlate logs with traces and other telemetry to make debugging easier.
-- **Error tracking:** Detect errors quickly and investigate their root causes with the surrounding context.
-- **SLA monitoring:** Track service-level objectives and identify when your application is approaching or exceeding defined thresholds.
-- **Alarms and alerts:** Set up alerts for critical errors, performance degradation, SLA violations, and other anomalies so your team can react quickly.
+DB local/dev: `neon link` (`.neon`, `neon.ts`, gitignored).
 
 ## Resources
 
@@ -109,7 +91,6 @@ Check out a few resources that may come in handy when working with NestJS:
 - For questions and support, please visit our [Discord channel](https://discord.gg/G7Qnnhy).
 - To dive deeper and get more hands-on experience, check out our official video [courses](https://courses.nestjs.com/).
 - Deploy your application to AWS with the help of [NestJS Mau](https://mau.nestjs.com) in just a few clicks.
-- Auto-instrument your application with [NestJS Observer](https://observer.nestjs.com). Distributed tracing, metrics, and logging made easy. Error tracking and performance monitoring for your NestJS applications.
 - Visualize your application graph and interact with the NestJS application in real-time using [NestJS Devtools](https://devtools.nestjs.com).
 - Need help with your project (part-time to full-time)? Check out our official [enterprise support](https://enterprise.nestjs.com).
 - To stay in the loop and get updates, follow us on [X](https://x.com/nestframework) and [LinkedIn](https://linkedin.com/company/nestjs).

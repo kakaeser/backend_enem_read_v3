@@ -25,5 +25,5 @@ COPY --from=build /app/dist ./dist
 COPY --from=build /app/node_modules/.prisma ./node_modules/.prisma
 COPY --from=build /app/node_modules/@prisma ./node_modules/@prisma
 COPY --from=build /app/prisma ./prisma
-# Cloud Run injeta PORT; app escuta process.env.PORT ?? 3030
+# Render injeta PORT; app escuta process.env.PORT ?? 3030
 CMD ["sh", "-c", "npx prisma migrate deploy && node dist/main"]
