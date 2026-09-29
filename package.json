@@ -22,6 +22,7 @@
     "test:e2e": "vitest run --config ./vitest.config.e2e.ts",
     "seed": "tsx prisma/seed.ts",
     "seed:legacy": "tsx prisma/seed.ts",
+    "backup:legacy": "tsx prisma/backup-to-legacy.ts",
     "seed:test": "tsx prisma/seed-test.ts"
   },
   "prisma": {
@@ -43,6 +44,7 @@
     "passport": "^0.7.0",
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
+    "resend": "^6.30.0",
     "rxjs": "^7.8.1"
   },
   "devDependencies": {

@@ -1,9 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import Database from 'better-sqlite3';
-import { join } from 'node:path';
+import { legacyDbPath as legacyPath } from './legacy/paths.js';
 
 const prisma = new PrismaClient();
-const legacyPath = join(process.cwd(), 'prisma', 'legacy', 'database.db');
 
 async function main() {
   console.log(`[seed] Lendo legado de ${legacyPath}`);

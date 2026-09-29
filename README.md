@@ -33,7 +33,7 @@
 
 ```bash
 $ npm install
-$ cp .env.example .env  # preencha DATABASE_URL/DIRECT_URL (Neon) + JWT_SECRET/JWT_REFRESH_SECRET/APLICADOR_JWT_EXPIRES_IN + FRONTEND_URL
+$ cp .env.example .env  # preencha DATABASE_URL/DIRECT_URL (Neon) + JWT_* + FRONTEND_URL; opcional RESEND_API_KEY/EMAIL_FROM (e-mail)
 $ npx prisma validate
 $ npx prisma migrate deploy  # ou migrate dev --name init em dev
 $ npx prisma generate
@@ -77,7 +77,7 @@ $ npm run test:cov
 
 Build local: `npm run build` → `dist/`. Produção usa o [`Dockerfile`](Dockerfile) (multi-stage, `prisma migrate deploy && node dist/main` no start) ou build nativo do Render.
 
-**Variáveis no Render** (Environment): `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL` (URLs do front separadas por vírgula, ex. `https://seu-projeto.pages.dev,http://localhost:3001`). Ver [`.env.example`](.env.example).
+**Variáveis no Render** (Environment): `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL` (URLs do front separadas por vírgula, ex. `https://seu-projeto.pages.dev,http://localhost:3001`). Para e-mail (convite/reset/Excel pós-prova): `RESEND_API_KEY`, `EMAIL_FROM` (domínio verificado no Resend); opcionais `ADM_INVITE_EXPIRES_IN` (default `7d`), `ADM_RESET_EXPIRES_IN` (default `1h`). Links nos e-mails usam a **primeira** origem de `FRONTEND_URL` (`frontendBaseUrl()` em `src/common/frontend-url.ts`). Ver [`.env.example`](.env.example).
 
 **Keep-alive (Render free):** o serviço dorme ~15 min sem HTTP. Ping `GET /` via [cron-job.org](https://cron-job.org) a cada 10–14 min (janela **06:00–23:59** Brasília recomendada) — detalhes em [`docs/render-keep-alive.md`](docs/render-keep-alive.md).
 

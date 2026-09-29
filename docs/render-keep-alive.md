@@ -22,10 +22,12 @@ Monitor HTTP a cada **5 min** (free) na mesma URL — ping + alerta se cair. Se 
 | `DIRECT_URL` | sim | Neon direct (migrations) |
 | `JWT_SECRET` | sim | |
 | `JWT_REFRESH_SECRET` | sim | |
-| `FRONTEND_URL` | sim | Origens CORS separadas por vírgula, ex. `https://seu-front.pages.dev,http://localhost:3001` |
+| `FRONTEND_URL` | sim | Origens CORS separadas por vírgula, ex. `https://seu-front.pages.dev,http://localhost:3001`; primeira origem = base de links em e-mail |
+| `RESEND_API_KEY` | sim (prod, e-mail) | Opcional em dev/test (MailService no-op). API Resend |
+| `EMAIL_FROM` | sim (prod, e-mail) | Remetente com domínio verificado no Resend, ex. `ENEM Read <noreply@seudominio.com>` |
 | `PORT` | geralmente injetado | App usa `process.env.PORT ?? 3030` |
 
-Opcionais já documentadas em [`.env.example`](../.env.example): `JWT_EXPIRES_IN`, `APLICADOR_JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`.
+Opcionais já documentadas em [`.env.example`](../.env.example): `JWT_EXPIRES_IN`, `APLICADOR_JWT_EXPIRES_IN`, `JWT_REFRESH_EXPIRES_IN`, `ADM_INVITE_EXPIRES_IN`, `ADM_RESET_EXPIRES_IN`.
 
 **Health check path** no Render: `/` ou padrão do serviço.
 

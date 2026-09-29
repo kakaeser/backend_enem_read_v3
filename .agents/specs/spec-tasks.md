@@ -84,10 +84,15 @@
 - [X] `src/exams/results/results.service.spec.ts` unit real (tudo certo/parcial/sem respostas/redacao null/ordenação+respondidas/ausente fora) + demais `*.spec.ts` com `InMemoryPrisma` e `overrideGuard(JwtAuthGuard)`
 - [X] `npm run lint && npm run build && npm run test (19) && npm run test:e2e (15) && npx prisma validate` verdes
 - [X] Fixes achados pelo e2e: `participants.service` default `presenca` → `true` (estava `false`, sobrescrevia o DB default) e `auth.service issueTokens` com `jti: randomUUID()` (dois logins no mesmo segundo geravam refresh idêntico → P2002 500)
-- [X] `Dockerfile` (node:22-slim multi-stage, `prisma generate` no build, `migrate deploy && node dist/main` no start) — deploy: `gcloud run deploy --set-env-vars DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL` (não usar `nest deploy`)
+- [X] `Dockerfile` (node:22-slim multi-stage, `prisma generate` no build, `migrate deploy && node dist/main` no start) — deploy: **Render** com env `DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL` (não usar `nest deploy` / Cloud Run)
 
 ## 9. Docs & Housekeeping [X] parcial
 
 - [X] `AGENTS.md` sincronizado: sem Socket.IO, Neon (não Supabase), JWT com refresh + aplicador 6h, data model real (sem `role`, `status` enum, sem `exam_id` em Answer, `RefreshToken`), API implementada por módulo, `presenca` import=false, `PORT 3030`, testes com mock, structure com `prisma/seed-test.ts` + `test/mocks` + `Dockerfile`
 - [X] `README.md` (edição incremental, boilerplate Nest preservado): `GET /resultados` + guarda 2 dias, `.xlsx` no fluxo, `seed:test`, `PORT 3030`, testes com mock, envs completas no deploy
-- [ ] `specs/spec-enem-read-v3-mvp.md` publicado no tracker com label `ready-for-agent` após `/setup-matt-pocock-skills`
+- [X] `specs/spec-enem-read-v3-mvp.md` — infra Neon + Render (não Supabase/Cloud Run)
+- [ ] Publicar no tracker com label `ready-for-agent` após `/setup-matt-pocock-skills`
+
+## 10. Resend e-mail + auth cookie [ ] — ver [spec-resend-email-tasks.md](./spec-resend-email-tasks.md)
+
+- [ ] Implementar checklist completo em `spec-resend-email-tasks.md` (spec: [spec-resend-email.md](./spec-resend-email.md))
