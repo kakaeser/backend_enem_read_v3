@@ -1,5 +1,4 @@
 import {
-  BadRequestException,
   Body,
   Controller,
   Delete,
@@ -8,11 +7,8 @@ import {
   ParseIntPipe,
   Patch,
   Post,
-  UploadedFile,
   UseGuards,
-  UseInterceptors,
 } from '@nestjs/common';
-import { FileInterceptor } from '@nestjs/platform-express';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { BulkParticipantsDto } from './dto/bulk-participants.dto.js';
 import { CreateParticipantDto } from './dto/create-participant.dto.js';
@@ -33,19 +29,6 @@ export class ParticipantsController {
   @Post('bulk')
   createMany(@Param('examId', ParseIntPipe) examId: number, @Body() dto: BulkParticipantsDto) {
     return this.participants.createMany(examId, dto.participants);
-  }
-
-  @Post('import')
-  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 2 * 1024 * 1024 } }))
-  importExcel(
-    @Param('examId', ParseIntPipe) examId: number,
-    @UploadedFile() file?: { buffer: Buffer; originalname: string; mimetype: string },
-  ) {
-    if (!file) throw new BadRequestException('Envie o arquivo .xlsx no campo "file"');
-    if (!/\.xlsx?$|\.xls$/i.test(file.originalname) && file.mimetype !== 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet') {
-      throw new BadRequestException('Arquivo deve ser .xlsx');
-    }
-    return this.participants.importExcel(examId, file.buffer);
   }
 
   @Get()

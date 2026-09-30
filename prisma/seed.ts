@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import Database from 'better-sqlite3';
+import { generateConsultaCodeRaw } from '../src/exams/participants/consulta-code.util.js';
 import { legacyDbPath as legacyPath } from './legacy/paths.js';
 
 const prisma = new PrismaClient();
@@ -79,12 +80,19 @@ async function main() {
 
   // 4. Participants — colunas legadas: presente, essay_points
   const participants = db.prepare('SELECT id, exam_id, nome, presente, essay_points FROM participantes').all() as any[];
+  const usedCodesByExam = new Map<number, Set<string>>();
   for (const p of participants) {
+    const used = usedCodesByExam.get(p.exam_id) ?? new Set<string>();
+    let consultaCode = generateConsultaCodeRaw();
+    while (used.has(consultaCode)) consultaCode = generateConsultaCodeRaw();
+    used.add(consultaCode);
+    usedCodesByExam.set(p.exam_id, used);
     await prisma.participant.create({
       data: {
         id: p.id,
         examId: p.exam_id,
         nome: p.nome,
+        consultaCode,
         presenca: !!p.presente,
         redacaoNota: p.essay_points ?? null,
       },

@@ -5,7 +5,7 @@
 ## 0. Pré-requisitos
 
 - [X] Ler `spec-resend-email.md` (contratos HTTP + breaking changes front)
-- [X] Conta Resend com domínio verificado + `EMAIL_FROM` definido para produção _(conta ok; domínio/`EMAIL_FROM` produção pendente — placeholders no `.env.example`)_
+- [X] Conta Resend com domínio verificado + `EMAIL_FROM` definido para produção
 
 ## 1. Dependências & env [X]
 
@@ -14,12 +14,12 @@
 - [X] Helper `frontendBaseUrl()` — primeira origem de `FRONTEND_URL` (lista vírgula) para links de e-mail
 - [X] Documentar envs no `AGENTS.md` / README (Render: `RESEND_API_KEY`, `EMAIL_FROM`)
 
-## 2. Prisma — `AdmEmailToken` [ ]
+## 2. Prisma — `AdmEmailToken` [X]
 
-- [ ] Enum `AdmEmailTokenPurpose`: `invite`, `password_reset`
-- [ ] Model `AdmEmailToken`: `id`, `email`, `admId?`, `purpose`, `tokenHash` unique, `expiresAt`, `usedAt?`, `createdAt`, `invitedByAdmId?` → FKs `Adm` com `onDelete: Cascade` onde aplicável
-- [ ] `npx prisma migrate dev --name add_adm_email_tokens` + `generate`
-- [ ] `test/mocks/in-memory-prisma.ts`: store `admEmailToken`, unique `tokenHash`, FK básico
+- [X] Enum `AdmEmailTokenPurpose`: `invite`, `password_reset`
+- [X] Model `AdmEmailToken`: `id`, `email`, `admId?`, `purpose`, `tokenHash` unique, `expiresAt`, `usedAt?`, `createdAt`, `invitedByAdmId?` → FKs `Adm` com `onDelete: Cascade` onde aplicável
+- [X] `npx prisma migrate dev --name add_adm_email_tokens` + `generate`
+- [X] `test/mocks/in-memory-prisma.ts`: store `admEmailToken`, unique `tokenHash`, FK básico
 
 ## 3. MailModule [ ]
 

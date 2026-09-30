@@ -21,6 +21,11 @@ enum AplicadorStatus {
   REJEITADO
 }
 
+enum AdmEmailTokenPurpose {
+  invite
+  password_reset
+}
+
 model Exam {
   id            Int        @id @default(autoincrement()) @map("exam_id")
   nome          String
@@ -44,9 +49,27 @@ model Adm {
   senha     String
   createdAt DateTime @default(now()) @map("created_at")
 
-  refreshTokens RefreshToken[]
+  refreshTokens         RefreshToken[]
+  admEmailTokens        AdmEmailToken[] @relation("AdmEmailTokenSubject")
+  admEmailTokensInvited AdmEmailToken[] @relation("AdmEmailTokenInvitedBy")
 
   @@map("adms")
+}
+
+model AdmEmailToken {
+  id               String               @id @default(cuid())
+  email            String
+  admId            Int?                 @map("adm_id")
+  adm              Adm?                 @relation("AdmEmailTokenSubject", fields: [admId], references: [id], onDelete: Cascade)
+  purpose          AdmEmailTokenPurpose
+  tokenHash        String               @unique
+  expiresAt        DateTime             @map("expires_at")
+  usedAt           DateTime?            @map("used_at")
+  createdAt        DateTime             @default(now()) @map("created_at")
+  invitedByAdmId   Int?                 @map("invited_by_adm_id")
+  invitedBy        Adm?                 @relation("AdmEmailTokenInvitedBy", fields: [invitedByAdmId], references: [id], onDelete: Cascade)
+
+  @@map("adm_email_tokens")
 }
 
 model RefreshToken {
@@ -78,17 +101,19 @@ model Aplicador {
 }
 
 model Participant {
-  id          Int        @id @default(autoincrement())
-  nome        String
-  presenca    Boolean    @default(true)
-  redacaoNota Float?     @map("redacao_nota")
-  examId      Int        @map("exam_id")
-  exam        Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
-  aplicadorId Int?       @map("aplicador_id")
-  aplicador   Aplicador? @relation(fields: [aplicadorId], references: [id], onDelete: SetNull)
+  id           Int        @id @default(autoincrement())
+  nome         String
+  consultaCode String     @map("consulta_code")
+  presenca     Boolean    @default(true)
+  redacaoNota  Float?     @map("redacao_nota")
+  examId       Int        @map("exam_id")
+  exam         Exam       @relation(fields: [examId], references: [id], onDelete: Cascade)
+  aplicadorId  Int?       @map("aplicador_id")
+  aplicador    Aplicador? @relation(fields: [aplicadorId], references: [id], onDelete: SetNull)
 
   answers Answer[]
 
+  @@unique([examId, consultaCode])
   @@index([examId])
   @@index([aplicadorId])
   @@map("participantes")
