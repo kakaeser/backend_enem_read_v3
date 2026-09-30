@@ -1,6 +1,7 @@
 import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
+import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { App } from 'supertest/types';
 import { AppModule } from './../src/app.module.js';
@@ -34,6 +35,7 @@ describe('ENEM Read fluxo completo (e2e, prisma mockado)', () => {
       .compile();
 
     app = moduleFixture.createNestApplication();
+    app.use(cookieParser());
     app.useGlobalPipes(new ValidationPipe({ whitelist: true, forbidNonWhitelisted: true, transform: true }));
     await app.init();
   }, 30000);
@@ -46,30 +48,38 @@ describe('ENEM Read fluxo completo (e2e, prisma mockado)', () => {
     await request(app.getHttpServer()).post('/auth/login').send({ email: 'e2e@read.local', senha: 'errada' }).expect(401);
   });
 
-  it('login ok retorna access + refresh', async () => {
+  it('login ok retorna access e refresh em cookie HttpOnly', async () => {
     const res = await request(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'e2e@read.local', senha: 'e2e-pass' })
       .expect(201);
     expect(res.body.access_token).toBeDefined();
-    expect(res.body.refresh_token).toBeDefined();
+    expect(res.body.adm?.email).toBe('e2e@read.local');
+    expect(res.body.refresh_token).toBeUndefined();
+    const setCookie = res.headers['set-cookie'];
+    const cookies = Array.isArray(setCookie) ? setCookie : setCookie ? [setCookie] : [];
+    expect(cookies.some((c) => c.includes('refresh_token') && c.toLowerCase().includes('httponly'))).toBe(true);
     token = res.body.access_token;
   });
 
   it('refresh rotaciona e antigo é revogado', async () => {
-    const login = await request(app.getHttpServer())
-      .post('/auth/login')
-      .send({ email: 'e2e@read.local', senha: 'e2e-pass' })
-      .expect(201);
-    const r1 = await request(app.getHttpServer())
-      .post('/auth/refresh')
-      .send({ refresh_token: login.body.refresh_token })
-      .expect(201);
+    const agent = request.agent(app.getHttpServer());
+    const login = await agent.post('/auth/login').send({ email: 'e2e@read.local', senha: 'e2e-pass' }).expect(201);
+    const staleCookie = login.headers['set-cookie']?.[0]?.split(';')[0];
+    const r1 = await agent.post('/auth/refresh').expect(201);
     expect(r1.body.access_token).toBeDefined();
+    expect(r1.body.refresh_token).toBeUndefined();
     await request(app.getHttpServer())
       .post('/auth/refresh')
-      .send({ refresh_token: login.body.refresh_token })
+      .set('Cookie', staleCookie ?? '')
       .expect(401);
+  });
+
+  it('logout limpa cookie e refresh subsequente falha', async () => {
+    const agent = request.agent(app.getHttpServer());
+    await agent.post('/auth/login').send({ email: 'e2e@read.local', senha: 'e2e-pass' }).expect(201);
+    await agent.post('/auth/logout').expect(201);
+    await agent.post('/auth/refresh').expect(401);
   });
 
   it('POST /exams cria prova + N questões vazias', async () => {

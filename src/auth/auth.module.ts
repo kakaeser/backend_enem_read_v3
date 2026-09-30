@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
+import { AdmEmailTokenService } from './adm-email-token.service.js';
 import { AuthService } from './auth.service.js';
 import { AuthController } from './auth.controller.js';
 import { JwtStrategy } from './jwt.strategy.js';
@@ -13,8 +14,8 @@ import { JwtStrategy } from './jwt.strategy.js';
       signOptions: { expiresIn: (process.env.JWT_EXPIRES_IN as any) ?? '15m' },
     }),
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, AdmEmailTokenService, JwtStrategy],
   controllers: [AuthController],
-  exports: [JwtModule, PassportModule],
+  exports: [JwtModule, PassportModule, AdmEmailTokenService],
 })
 export class AuthModule {}

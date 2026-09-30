@@ -21,19 +21,19 @@
 - [X] `npx prisma migrate dev --name add_adm_email_tokens` + `generate`
 - [X] `test/mocks/in-memory-prisma.ts`: store `admEmailToken`, unique `tokenHash`, FK básico
 
-## 3. MailModule [ ]
+## 3. MailModule [X]
 
-- [ ] `src/mail/mail.types.ts` — shape `SendMailOptions` (to, subject, html, attachments?)
-- [ ] `src/mail/mail.service.ts` — abstract/injectable; `ResendMailService` se `RESEND_API_KEY`; senão no-op/log
-- [ ] `src/mail/mail.module.ts` — export `MailService`
-- [ ] `test/mocks/fake-mail.service.ts` — array `sent[]` para e2e (to, subject, html, attachments meta)
-- [ ] Templates PT-BR (strings): assunto + HTML convite, reset, resultados (links absolutos)
+- [X] `src/mail/mail.types.ts` — shape `SendMailOptions` (to, subject, html, attachments?)
+- [X] `src/mail/mail.service.ts` — abstract/injectable; `ResendMailService` se `RESEND_API_KEY`; senão no-op/log
+- [X] `src/mail/mail.module.ts` — export `MailService`
+- [X] `test/mocks/fake-mail.service.ts` — array `sent[]` para e2e (to, subject, html, attachments meta)
+- [X] Templates PT-BR (strings): assunto + HTML convite, reset, resultados (links absolutos)
 
-## 4. Tokens opacos (convite/reset) [ ]
+## 4. Tokens opacos (convite/reset) [X]
 
-- [ ] Util compartilhado: `generateOpaqueToken()`, `hashToken()` (SHA-256, alinhado a refresh)
-- [ ] Parser TTL env (`7d`, `1h`) → `Date` expiresAt
-- [ ] `AdmEmailTokenService` (ou métodos em `AuthService`/`UserService`): criar, invalidar pendentes por email+purpose, consumir (validar exp/uso, set `usedAt`)
+- [X] Util compartilhado: `generateOpaqueToken()`, `hashToken()` (SHA-256, alinhado a refresh)
+- [X] Parser TTL env (`7d`, `1h`) → `Date` expiresAt
+- [X] `AdmEmailTokenService` (ou métodos em `AuthService`/`UserService`): criar, invalidar pendentes por email+purpose, consumir (validar exp/uso, set `usedAt`)
 
 ## 5. Convite ADM [ ]
 
@@ -60,16 +60,16 @@
 - [ ] Enviar um mail por Adm (`findMany` emails) com anexo; assunto PT-BR resultados
 - [ ] Registrar `ResultsExportService` + deps no `ExamsModule`
 
-## 8. Auth ADM — refresh em cookie HttpOnly [ ]
+## 8. Auth ADM — refresh em cookie HttpOnly [X]
 
-- [ ] Constantes cookie: nome (`refresh_token`), `Path`, `SameSite=Lax`, `HttpOnly`, `Secure` se production
-- [ ] Helper `setRefreshCookie(res, token)` / `clearRefreshCookie(res)`
-- [ ] `loginAdm`: body `{ access_token, adm }` **sem** `refresh_token`; `Set-Cookie` refresh
-- [ ] `refresh`: ler JWT do cookie (não body); rotacionar; novo access JSON + novo cookie
-- [ ] `logout`: ler cookie; revogar hash; `Clear-Cookie`
-- [ ] `main.ts` CORS: `credentials: true`; origins de `FRONTEND_URL` (não `*`)
-- [ ] Confirmar `POST /auth/aplicador` inalterado (sem cookie)
-- [ ] Atualizar DTO `RefreshDto` / controller — refresh sem body obrigatório (breaking)
+- [X] Constantes cookie: nome (`refresh_token`), `Path`, `SameSite=Lax`, `HttpOnly`, `Secure` se production
+- [X] Helper `setRefreshCookie(res, token)` / `clearRefreshCookie(res)`
+- [X] `loginAdm`: body `{ access_token, adm }` **sem** `refresh_token`; `Set-Cookie` refresh
+- [X] `refresh`: ler JWT do cookie (não body); rotacionar; novo access JSON + novo cookie
+- [X] `logout`: ler cookie; revogar hash; `Clear-Cookie`
+- [X] `main.ts` CORS: `credentials: true`; origins de `FRONTEND_URL` (não `*`)
+- [X] Confirmar `POST /auth/aplicador` inalterado (sem cookie)
+- [X] Atualizar DTO `RefreshDto` / controller — refresh sem body obrigatório (breaking)
 
 ## 9. Testes unit [ ]
 

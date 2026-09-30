@@ -1,12 +1,10 @@
 import { Injectable, UnauthorizedException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
-import { createHash, randomUUID } from 'node:crypto';
+import { randomUUID } from 'node:crypto';
+import { hashToken } from '../common/opaque-token.util.js';
+import { expiresAtFromDuration } from '../common/parse-duration.util.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-
-function hashToken(token: string) {
-  return createHash('sha256').update(token).digest('hex');
-}
 
 @Injectable()
 export class AuthService {
@@ -37,7 +35,8 @@ export class AuthService {
       },
     );
     const tokenHash = hashToken(refresh_token);
-    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7d
+    const refreshTtl = process.env.JWT_REFRESH_EXPIRES_IN ?? '7d';
+    const expiresAt = expiresAtFromDuration(refreshTtl);
     await this.prisma.refreshToken.create({
       data: { admId: adm.id, tokenHash, expiresAt },
     });
@@ -46,9 +45,10 @@ export class AuthService {
 
   async loginAdm(email: string, senha: string) {
     const adm = await this.validateAdm(email, senha);
-    const tokens = await this.issueTokens(adm);
+    const { access_token, refresh_token } = await this.issueTokens(adm);
     return {
-      ...tokens,
+      access_token,
+      refresh_token,
       adm: { id: adm.id, email: adm.email },
     };
   }
