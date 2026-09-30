@@ -1,8 +1,11 @@
-import { Body, Controller, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
+import { Body, Controller, HttpCode, HttpStatus, Post, Req, Res, UnauthorizedException } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { AuthService } from './auth.service.js';
-import { LoginDto } from './dto/login.dto.js';
+import { AcceptInviteDto } from './dto/accept-invite.dto.js';
 import { AplicadorLoginDto } from './dto/aplicador-login.dto.js';
+import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
+import { LoginDto } from './dto/login.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
 import { clearRefreshCookie, readRefreshCookie, setRefreshCookie } from './refresh-cookie.js';
 
 @Controller('auth')
@@ -35,6 +38,22 @@ export class AuthController {
     }
     clearRefreshCookie(res);
     return { message: 'Logout efetuado' };
+  }
+
+  @Post('accept-invite')
+  @HttpCode(HttpStatus.CREATED)
+  acceptInvite(@Body() dto: AcceptInviteDto) {
+    return this.auth.acceptInvite(dto);
+  }
+
+  @Post('forgot-password')
+  forgotPassword(@Body() dto: ForgotPasswordDto) {
+    return this.auth.forgotPassword(dto);
+  }
+
+  @Post('reset-password')
+  resetPassword(@Body() dto: ResetPasswordDto) {
+    return this.auth.resetPassword(dto);
   }
 
   @Post('aplicador')

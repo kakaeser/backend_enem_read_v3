@@ -35,30 +35,30 @@
 - [X] Parser TTL env (`7d`, `1h`) → `Date` expiresAt
 - [X] `AdmEmailTokenService` (ou métodos em `AuthService`/`UserService`): criar, invalidar pendentes por email+purpose, consumir (validar exp/uso, set `usedAt`)
 
-## 5. Convite ADM [ ]
+## 5. Convite ADM [X]
 
-- [ ] DTO `InviteUserDto` — `{ email }` + normalização lowercase trim
-- [ ] `POST /users/invite` — JWT; 409 se Adm existe; invalidar invites pendentes mesmo email; criar token; enviar mail `{base}/aceitar-convite?token=`; **propagar erro** se Resend falhar
-- [ ] DTO `AcceptInviteDto` — `{ token, senha }` + `MinLength` igual create-user
-- [ ] `POST /auth/accept-invite` — público; cria Adm bcrypt; marca token usado; 400 inválido/expirado/usado; **sem** auto-login
-- [ ] **Breaking**: `POST /users` — remover `senha` do DTO ou 400/410 apontando `/users/invite`
-- [ ] Manter GET/PATCH/DELETE `/users` inalterados
+- [X] DTO `InviteUserDto` — `{ email }` + normalização lowercase trim
+- [X] `POST /users/invite` — JWT; 409 se Adm existe; invalidar invites pendentes mesmo email; criar token; enviar mail `{base}/aceitar-convite?token=`; **propagar erro** se Resend falhar
+- [X] DTO `AcceptInviteDto` — `{ token, senha }` + `MinLength` igual create-user
+- [X] `POST /auth/accept-invite` — público; cria Adm bcrypt; marca token usado; 400 inválido/expirado/usado; **sem** auto-login
+- [X] **Breaking**: `POST /users` removido (onboarding só via `/users/invite`)
+- [X] Manter GET/PATCH/DELETE `/users` inalterados
 
-## 6. Forgot / reset senha [ ]
+## 6. Forgot / reset senha [X]
 
-- [ ] DTOs `ForgotPasswordDto`, `ResetPasswordDto`
-- [ ] `POST /auth/forgot-password` — sempre 200 `{ message }` genérico; se Adm existe → token + mail `{base}/redefinir-senha?token=`
-- [ ] `POST /auth/reset-password` — bcrypt; `usedAt`; `refreshToken.updateMany({ revoked: true })` para admId
-- [ ] Wire `AuthModule` + `MailModule`; registrar rotas em `auth.controller.ts`
+- [X] DTOs `ForgotPasswordDto`, `ResetPasswordDto`
+- [X] `POST /auth/forgot-password` — sempre 200 `{ message }` genérico; se Adm existe → token + mail `{base}/redefinir-senha?token=`
+- [X] `POST /auth/reset-password` — bcrypt; `usedAt`; `refreshToken.updateMany({ revoked: true })` para admId
+- [X] Wire `AuthModule` + `MailModule`; registrar rotas em `auth.controller.ts`
 
-## 7. Excel ranking + e-mail pós-`completed` [ ]
+## 7. Excel ranking + e-mail pós-`completed` [X]
 
-- [ ] `ResultsExportService` — `buildRankingSpreadsheetBuffer(examId)` via `ResultsService.getRanking`
-- [ ] Colunas: posição, nome, ponderada, redação, total, acertos, respondidas (2 casas decimais notas)
-- [ ] `slugifyExamNome(nome)` → filename `resultados-{slug}-{examId}.xlsx`
-- [ ] `ExamsService.updateStatus`: após update `completed`, `void notifyAdmsResultsEmail(examId).catch(log)` — **não** falhar PATCH
-- [ ] Enviar um mail por Adm (`findMany` emails) com anexo; assunto PT-BR resultados
-- [ ] Registrar `ResultsExportService` + deps no `ExamsModule`
+- [X] `ResultsExportService` — `buildRankingSpreadsheetBuffer(examId)` via `ResultsService.getRanking`
+- [X] Colunas: posição, nome, ponderada, redação, total, acertos, respondidas (2 casas decimais notas)
+- [X] `slugifyExamNome(nome)` → filename `resultados-{slug}-{examId}.xlsx`
+- [X] `ExamsService.updateStatus`: após update `completed`, `void notifyAdmsResultsEmail(examId).catch(log)` — **não** falhar PATCH
+- [X] Enviar um mail por Adm (`findMany` emails) com anexo; assunto PT-BR resultados
+- [X] Registrar `ResultsExportService` + deps no `ExamsModule`
 
 ## 8. Auth ADM — refresh em cookie HttpOnly [X]
 

@@ -1,19 +1,32 @@
 import { ConflictException, Injectable, NotFoundException } from '@nestjs/common';
 import * as bcrypt from 'bcrypt';
+import { AdmEmailTokenService } from '../auth/adm-email-token.service.js';
+import { frontendBaseUrl } from '../common/frontend-url.js';
+import { buildAdmInviteEmail } from '../mail/mail.templates.js';
+import { MailService } from '../mail/mail.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
-import { CreateUserDto } from './dto/create-user.dto.js';
+import { InviteUserDto } from './dto/invite-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 
 @Injectable()
 export class UserService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private admEmailTokenService: AdmEmailTokenService,
+    private mail: MailService,
+  ) {}
 
-  async create(dto: CreateUserDto) {
-    const exists = await this.prisma.adm.findUnique({ where: { email: dto.email } });
+  async invite(invitedByAdmId: number, dto: InviteUserDto) {
+    const email = this.admEmailTokenService.normalizeEmail(dto.email);
+    const exists = await this.prisma.adm.findUnique({ where: { email } });
     if (exists) throw new ConflictException('Email já cadastrado');
-    const hash = await bcrypt.hash(dto.senha, 10);
-    const adm = await this.prisma.adm.create({ data: { email: dto.email, senha: hash } });
-    return { id: adm.id, email: adm.email, createdAt: adm.createdAt };
+
+    const { token } = await this.admEmailTokenService.issueInvite({ email, invitedByAdmId });
+    const acceptUrl = `${frontendBaseUrl()}/aceitar-convite?token=${encodeURIComponent(token)}`;
+    const { subject, html } = buildAdmInviteEmail(acceptUrl);
+    await this.mail.send({ to: email, subject, html });
+
+    return { message: 'Convite enviado', email };
   }
 
   async findAll() {

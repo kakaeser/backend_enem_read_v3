@@ -1,8 +1,11 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { BadRequestException, Injectable, Logger, NotFoundException } from '@nestjs/common';
+import { buildExamResultsEmail } from '../mail/mail.templates.js';
+import { MailService } from '../mail/mail.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
 import { CreateExamDto } from './dto/create-exam.dto.js';
 import { UpdateExamDto } from './dto/update-exam.dto.js';
 import { ExamStatusDto } from './dto/update-status.dto.js';
+import { ResultsExportService } from './results/results-export.service.js';
 
 const allowedTransitions: Record<string, string[]> = {
   draft: ['in_progress'],
@@ -12,7 +15,13 @@ const allowedTransitions: Record<string, string[]> = {
 
 @Injectable()
 export class ExamsService {
-  constructor(private prisma: PrismaService) {}
+  private readonly logger = new Logger(ExamsService.name);
+
+  constructor(
+    private prisma: PrismaService,
+    private resultsExport: ResultsExportService,
+    private mail: MailService,
+  ) {}
 
   async create(dto: CreateExamDto) {
     return this.prisma.$transaction(async (tx) => {
@@ -78,7 +87,27 @@ export class ExamsService {
     }
     const data: any = { status: status as any };
     if (status === ExamStatusDto.completed) data.encerramento = new Date();
-    return this.prisma.exam.update({ where: { id }, data });
+    const updated = await this.prisma.exam.update({ where: { id }, data });
+    if (status === ExamStatusDto.completed) {
+      void this.notifyAdmsResultsEmail(id).catch((err) =>
+        this.logger.error(`Falha ao enviar e-mail de resultados da prova ${id}`, err),
+      );
+    }
+    return updated;
+  }
+
+  private async notifyAdmsResultsEmail(examId: number): Promise<void> {
+    const { buffer, filename, examNome } = await this.resultsExport.buildRankingSpreadsheetBuffer(examId);
+    const { subject, html } = buildExamResultsEmail(examNome);
+    const adms = await this.prisma.adm.findMany({ select: { email: true } });
+    for (const adm of adms) {
+      await this.mail.send({
+        to: adm.email,
+        subject,
+        html,
+        attachments: [{ filename, content: buffer }],
+      });
+    }
   }
 
   async remove(id: number) {

@@ -1,16 +1,35 @@
-import { Injectable, UnauthorizedException, ForbiddenException, NotFoundException } from '@nestjs/common';
+import {
+  BadRequestException,
+  ConflictException,
+  ForbiddenException,
+  Injectable,
+  NotFoundException,
+  UnauthorizedException,
+} from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import * as bcrypt from 'bcrypt';
 import { randomUUID } from 'node:crypto';
+import { AdmEmailTokenService } from './adm-email-token.service.js';
+import { AcceptInviteDto } from './dto/accept-invite.dto.js';
+import { ForgotPasswordDto } from './dto/forgot-password.dto.js';
+import { ResetPasswordDto } from './dto/reset-password.dto.js';
+import { frontendBaseUrl } from '../common/frontend-url.js';
 import { hashToken } from '../common/opaque-token.util.js';
 import { expiresAtFromDuration } from '../common/parse-duration.util.js';
+import { buildPasswordResetEmail } from '../mail/mail.templates.js';
+import { MailService } from '../mail/mail.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+
+const INVALID_TOKEN_MSG = 'Token inválido ou expirado';
+export const FORGOT_PASSWORD_MESSAGE = 'Se o e-mail existir, enviaremos instruções.';
 
 @Injectable()
 export class AuthService {
   constructor(
     private prisma: PrismaService,
     private jwt: JwtService,
+    private admEmailTokenService: AdmEmailTokenService,
+    private mail: MailService,
   ) {}
 
   async validateAdm(email: string, senha: string) {
@@ -82,6 +101,47 @@ export class AuthService {
     const tokenHash = hashToken(refreshToken);
     await this.prisma.refreshToken.updateMany({ where: { tokenHash }, data: { revoked: true } });
     return { message: 'Logout efetuado' };
+  }
+
+  async acceptInvite(dto: AcceptInviteDto) {
+    const tokenHash = hashToken(dto.token);
+    const row = await this.prisma.admEmailToken.findUnique({ where: { tokenHash } });
+    if (!row || row.purpose !== 'invite' || row.usedAt != null || row.expiresAt < new Date()) {
+      throw new BadRequestException(INVALID_TOKEN_MSG);
+    }
+    const exists = await this.prisma.adm.findUnique({ where: { email: row.email } });
+    if (exists) throw new ConflictException('Email já cadastrado');
+
+    await this.admEmailTokenService.consume(dto.token, 'invite');
+    const senhaHash = await bcrypt.hash(dto.senha, 10);
+    await this.prisma.adm.create({ data: { email: row.email, senha: senhaHash } });
+    return { message: 'Conta criada com sucesso' };
+  }
+
+  async forgotPassword(dto: ForgotPasswordDto) {
+    const email = this.admEmailTokenService.normalizeEmail(dto.email);
+    const adm = await this.prisma.adm.findUnique({ where: { email } });
+    if (adm) {
+      const { token } = await this.admEmailTokenService.issuePasswordReset({ admId: adm.id, email });
+      const resetUrl = `${frontendBaseUrl()}/redefinir-senha?token=${encodeURIComponent(token)}`;
+      const { subject, html } = buildPasswordResetEmail(resetUrl);
+      await this.mail.send({ to: email, subject, html });
+    }
+    return { message: FORGOT_PASSWORD_MESSAGE };
+  }
+
+  async resetPassword(dto: ResetPasswordDto) {
+    const row = await this.admEmailTokenService.consume(dto.token, 'password_reset');
+    if (row.admId == null) {
+      throw new BadRequestException(INVALID_TOKEN_MSG);
+    }
+    const senhaHash = await bcrypt.hash(dto.senha, 10);
+    await this.prisma.adm.update({ where: { id: row.admId }, data: { senha: senhaHash } });
+    await this.prisma.refreshToken.updateMany({
+      where: { admId: row.admId, revoked: false },
+      data: { revoked: true },
+    });
+    return { message: 'Senha redefinida com sucesso' };
   }
 
   async loginAplicador(nome: string, provaId: number) {
