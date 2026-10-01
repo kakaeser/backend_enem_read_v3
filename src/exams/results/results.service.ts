@@ -1,9 +1,34 @@
-import { ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import {
+  ForbiddenException,
+  HttpException,
+  HttpStatus,
+  Injectable,
+  NotFoundException,
+} from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
+import { normalizeConsultaCode } from '../participants/consulta-code.util.js';
+
+const CONSULTA_RATE_WINDOW_MS = 60_000;
+const CONSULTA_RATE_MAX = 30;
 
 @Injectable()
 export class ResultsService {
+  private consultaRate = new Map<string, { count: number; resetAt: number }>();
+
   constructor(private prisma: PrismaService) {}
+
+  assertConsultaRateLimit(clientKey: string) {
+    const now = Date.now();
+    const entry = this.consultaRate.get(clientKey);
+    if (!entry || now >= entry.resetAt) {
+      this.consultaRate.set(clientKey, { count: 1, resetAt: now + CONSULTA_RATE_WINDOW_MS });
+      return;
+    }
+    entry.count++;
+    if (entry.count > CONSULTA_RATE_MAX) {
+      throw new HttpException('Muitas tentativas. Aguarde um minuto.', HttpStatus.TOO_MANY_REQUESTS);
+    }
+  }
 
   async calcNota(participantId: number) {
     const participant = await this.prisma.participant.findUnique({
@@ -81,6 +106,36 @@ export class ResultsService {
         acertosPorQuestao,
       },
     };
+  }
+
+  async getPublicResults(examId: number) {
+    const full = await this.getRanking(examId);
+    const top15 = full.ranking.slice(0, 15).map((r, i) => ({
+      posicao: i + 1,
+      nome: r.nome,
+    }));
+    return {
+      exam: full.exam,
+      top15,
+      stats: {
+        totalParticipantes: full.stats.totalParticipantes,
+        media: full.stats.media,
+        maior: full.stats.maior,
+        menor: full.stats.menor,
+      },
+    };
+  }
+
+  async consultaByCode(examId: number, codigo: string) {
+    const normalized = normalizeConsultaCode(codigo);
+    const participant = await this.prisma.participant.findFirst({
+      where: { examId, consultaCode: normalized },
+      select: { id: true },
+    });
+    if (!participant) {
+      throw new NotFoundException('Código inválido');
+    }
+    return this.getDetail(examId, participant.id);
   }
 
   async getDetail(examId: number, participantId: number) {

@@ -23,7 +23,7 @@ describe('ResultsService (unit, prisma mockado)', () => {
     // peso 1 e 2 → soma 3
     q1 = (await mock.question.create({ data: { examId, numero: 1, peso: 1, correctAnswer: 'A', enunciado: 'Q1', alternativas: [] } })).id;
     q2 = (await mock.question.create({ data: { examId, numero: 2, peso: 2, correctAnswer: 'B', enunciado: 'Q2', alternativas: [] } })).id;
-    p1 = (await mock.participant.create({ data: { examId, nome: 'Aluno', presenca: true, redacaoNota: 800 } })).id;
+    p1 = (await mock.participant.create({ data: { examId, nome: 'Aluno', consultaCode: 'UNITP001', presenca: true, redacaoNota: 800 } })).id;
   });
 
   it('tudo certo → ponderada 1000 + redação', async () => {
@@ -49,7 +49,7 @@ describe('ResultsService (unit, prisma mockado)', () => {
   });
 
   it('redacao null → total igual ponderada', async () => {
-    const p2 = (await mock.participant.create({ data: { examId, nome: 'Sem red', presenca: true, redacaoNota: null } })).id;
+    const p2 = (await mock.participant.create({ data: { examId, nome: 'Sem red', consultaCode: 'UNITP002', presenca: true, redacaoNota: null } })).id;
     await mock.answer.create({ data: { userId: p2, questId: q1, alternativa: 'A' } });
     const n = await service.calcNota(p2);
     expect(n.redacao).toBeNull();
@@ -57,7 +57,7 @@ describe('ResultsService (unit, prisma mockado)', () => {
   });
 
   it('ranking ordena por total com desempate por nome e traz respondidas', async () => {
-    await mock.participant.create({ data: { examId, nome: 'Bruto', presenca: true, redacaoNota: null } });
+    await mock.participant.create({ data: { examId, nome: 'Bruto', consultaCode: 'UNITP003', presenca: true, redacaoNota: null } });
     await mock.answer.create({ data: { userId: p1, questId: q1, alternativa: 'A' } });
     const r = await service.getRanking(examId);
     expect(r.ranking[0].nome).toBe('Aluno');
@@ -67,8 +67,22 @@ describe('ResultsService (unit, prisma mockado)', () => {
   });
 
   it('participante ausente fica fora do ranking', async () => {
-    await mock.participant.create({ data: { examId, nome: 'Faltou', presenca: false, redacaoNota: null } });
+    await mock.participant.create({ data: { examId, nome: 'Faltou', consultaCode: 'UNITP004', presenca: false, redacaoNota: null } });
     const r = await service.getRanking(examId);
     expect(r.ranking.some((x) => x.nome === 'Faltou')).toBe(false);
+  });
+
+  it('getPublicResults expõe só top15 nomes sem ranking completo', async () => {
+    await mock.answer.create({ data: { userId: p1, questId: q1, alternativa: 'A' } });
+    const pub = await service.getPublicResults(examId);
+    expect(pub.top15).toHaveLength(1);
+    expect(pub.top15[0]).toEqual({ posicao: 1, nome: 'Aluno' });
+    expect(pub.stats.totalParticipantes).toBe(1);
+    expect((pub as { ranking?: unknown }).ranking).toBeUndefined();
+  });
+
+  it('consultaByCode retorna detalhe com código válido', async () => {
+    const detail = await service.consultaByCode(examId, 'unitp001');
+    expect(detail.participant.nome).toBe('Aluno');
   });
 });

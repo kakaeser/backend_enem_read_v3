@@ -1,7 +1,7 @@
-import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
-import ExcelJS from 'exceljs';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { CreateParticipantDto } from './dto/create-participant.dto.js';
+import { generateConsultaCodeRaw } from './consulta-code.util.js';
 
 @Injectable()
 export class ParticipantsService {
@@ -13,53 +13,46 @@ export class ParticipantsService {
     return exam;
   }
 
+  private async allocateConsultaCode(examId: number): Promise<string> {
+    for (let attempt = 0; attempt < 25; attempt++) {
+      const code = generateConsultaCodeRaw();
+      const exists = await this.prisma.participant.findFirst({
+        where: { examId, consultaCode: code },
+        select: { id: true },
+      });
+      if (!exists) return code;
+    }
+    throw new Error('Não foi possível gerar código de consulta único');
+  }
+
+  private async participantCreateData(examId: number, dto: CreateParticipantDto) {
+    return {
+      examId,
+      nome: dto.nome,
+      consultaCode: await this.allocateConsultaCode(examId),
+      presenca: dto.presenca ?? false,
+      aplicadorId: dto.aplicadorId ?? null,
+    };
+  }
+
   async create(examId: number, dto: CreateParticipantDto) {
     await this.assertExam(examId);
     return this.prisma.participant.create({
-      data: {
-        examId,
-        nome: dto.nome,
-        presenca: dto.presenca ?? false,
-        aplicadorId: dto.aplicadorId ?? null,
-      },
+      data: await this.participantCreateData(examId, dto),
     });
   }
 
   async createMany(examId: number, dtos: CreateParticipantDto[]) {
     await this.assertExam(examId);
-    await this.prisma.participant.createMany({
-      data: dtos.map((d) => ({
-        examId,
-        nome: d.nome,
-        presenca: d.presenca ?? false,
-        aplicadorId: d.aplicadorId ?? null,
-      })),
-    });
-    return { created: dtos.length };
-  }
-
-  async importExcel(examId: number, buffer: Buffer) {
-    await this.assertExam(examId);
-    const workbook = new ExcelJS.Workbook();
-    try {
-      await workbook.xlsx.load(buffer as any);
-    } catch {
-      throw new BadRequestException('Arquivo inválido — envie um .xlsx válido');
+    const created = [];
+    for (const d of dtos) {
+      created.push(
+        await this.prisma.participant.create({
+          data: await this.participantCreateData(examId, d),
+        }),
+      );
     }
-    const sheet = workbook.worksheets[0];
-    if (!sheet) throw new BadRequestException('Planilha sem abas');
-    const names: string[] = [];
-    sheet.eachRow((row, rowNumber) => {
-      if (rowNumber === 1) return; // cabeçalho
-      const cell = row.getCell(1).value;
-      const nome = typeof cell === 'string' ? cell.trim() : cell != null ? String(cell).trim() : '';
-      if (nome) names.push(nome);
-    });
-    if (!names.length) throw new BadRequestException('Nenhum nome encontrado na primeira coluna');
-    await this.prisma.participant.createMany({
-      data: names.map((nome) => ({ examId, nome, presenca: false })),
-    });
-    return { created: names.length };
+    return { created: created.length };
   }
 
   async findAll(examId: number) {
@@ -76,10 +69,17 @@ export class ParticipantsService {
     return this.prisma.participant.findMany({
       where: { examId, presenca: true },
       orderBy: { nome: 'asc' },
-      include: { _count: { select: { answers: true } } },
+      select: {
+        id: true,
+        nome: true,
+        presenca: true,
+        redacaoNota: true,
+        examId: true,
+        aplicadorId: true,
+        _count: { select: { answers: true } },
+      },
     });
   }
-
 
   private async assertOwned(examId: number, id: number) {
     const p = await this.prisma.participant.findFirst({ where: { id, examId } });
@@ -99,7 +99,6 @@ export class ParticipantsService {
 
   async remove(examId: number, id: number) {
     await this.assertOwned(examId, id);
-    // Answers em cascata via onDelete: Cascade no Prisma
     await this.prisma.participant.delete({ where: { id } });
     return { message: 'Participante removido' };
   }

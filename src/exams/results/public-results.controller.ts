@@ -1,4 +1,6 @@
-import { Controller, Get, Param, ParseIntPipe } from '@nestjs/common';
+import { Body, Controller, Get, Param, ParseIntPipe, Post, Req } from '@nestjs/common';
+import type { Request } from 'express';
+import { ConsultaResultadoDto } from './dto/consulta-resultado.dto.js';
 import { ResultsService } from './results.service.js';
 
 @Controller('resultados')
@@ -10,18 +12,21 @@ export class PublicResultsController {
     return this.results.listDivulgados();
   }
 
-  @Get(':examId')
-  async ranking(@Param('examId', ParseIntPipe) examId: number) {
-    await this.results.assertDivulgado(examId);
-    return this.results.getRanking(examId);
-  }
-
-  @Get(':examId/:participantId')
-  async detail(
+  @Post(':examId/consulta')
+  async consulta(
     @Param('examId', ParseIntPipe) examId: number,
-    @Param('participantId', ParseIntPipe) participantId: number,
+    @Body() dto: ConsultaResultadoDto,
+    @Req() req: Request,
   ) {
     await this.results.assertDivulgado(examId);
-    return this.results.getDetail(examId, participantId);
+    const clientKey = req.ip ?? req.socket.remoteAddress ?? 'unknown';
+    this.results.assertConsultaRateLimit(clientKey);
+    return this.results.consultaByCode(examId, dto.codigo);
+  }
+
+  @Get(':examId')
+  async publicResults(@Param('examId', ParseIntPipe) examId: number) {
+    await this.results.assertDivulgado(examId);
+    return this.results.getPublicResults(examId);
   }
 }

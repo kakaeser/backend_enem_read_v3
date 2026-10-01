@@ -5,13 +5,14 @@
  * delete/deleteMany/upsert/count/aggregate/$transaction, com
  * where (igualdade, in, lte/lt/gte/gt, AND/OR/NOT), orderBy
  * (incluindo 1 nível aninhado), select, include (relações + _count)
- * e erro P2002 nas uniques (question [examId,numero], adm.email).
+ * erro P2002 nas uniques (question [examId,numero], adm.email, refreshToken/admEmailToken tokenHash).
  */
 export class InMemoryPrisma {
   private tables: Record<string, { rows: any[]; seq: number }> = {};
-  private defaultIds: Record<string, string> = { refreshToken: 'string' };
+  private defaultIds: Record<string, string> = { refreshToken: 'string', admEmailToken: 'string' };
 
   adm = this.model('adm');
+  admEmailToken = this.model('admEmailToken');
   aplicador = this.model('aplicador');
   exam = this.model('exam');
   participant = this.model('participant');
@@ -105,6 +106,7 @@ export class InMemoryPrisma {
     if (name === 'question' && rows.some((r) => r.examId === data.examId && r.numero === data.numero)) throw err();
     if (name === 'adm' && rows.some((r) => r.email === data.email)) throw err();
     if (name === 'refreshToken' && rows.some((r) => r.tokenHash === data.tokenHash)) throw err();
+    if (name === 'admEmailToken' && rows.some((r) => r.tokenHash === data.tokenHash)) throw err();
   }
 
   private findOne(name: string, where: any) {
@@ -155,6 +157,10 @@ export class InMemoryPrisma {
           return false;
         });
       }
+      if (typeof v === 'boolean') {
+        if (v === false) return row[k] !== true;
+        return row[k] === true;
+      }
       return row[k] === v;
     });
   }
@@ -199,6 +205,7 @@ export class InMemoryPrisma {
       exam: { questions: 'question', participants: 'participant', aplicadores: 'aplicador' },
       aplicador: { prova: 'exam', participants: 'participant' },
       refreshToken: { adm: 'adm' },
+      admEmailToken: { adm: 'adm', invitedBy: 'adm' },
     };
     return map[model]?.[rel] ?? rel;
   }
@@ -232,6 +239,10 @@ export class InMemoryPrisma {
         return T('participant').filter((r) => r.aplicadorId === row.id);
       case 'refreshToken.adm':
         return T('adm').find((r) => r.id === row.admId);
+      case 'admEmailToken.adm':
+        return row.admId != null ? T('adm').find((r) => r.id === row.admId) : undefined;
+      case 'admEmailToken.invitedBy':
+        return row.invitedByAdmId != null ? T('adm').find((r) => r.id === row.invitedByAdmId) : undefined;
       default:
         return undefined;
     }

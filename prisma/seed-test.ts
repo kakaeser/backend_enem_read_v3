@@ -1,5 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 import * as readline from 'node:readline';
+import { generateConsultaCodeRaw } from '../src/exams/participants/consulta-code.util.js';
 
 const prisma = new PrismaClient();
 const TEST_EXAM_ID = 999;
@@ -72,6 +73,7 @@ async function createTestData() {
       data: {
         examId: TEST_EXAM_ID,
         nome: `Teste ${String(i).padStart(2, '0')}`,
+        consultaCode: generateConsultaCodeRaw(),
         presenca: true,
         redacaoNota: Math.floor(Math.random() * 400) + 600, // 600-1000
       },

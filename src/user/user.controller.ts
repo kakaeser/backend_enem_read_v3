@@ -1,6 +1,19 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import {
+  Body,
+  Controller,
+  Delete,
+  Get,
+  HttpCode,
+  HttpStatus,
+  Param,
+  ParseIntPipe,
+  Patch,
+  Post,
+  Req,
+  UseGuards,
+} from '@nestjs/common';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
-import { CreateUserDto } from './dto/create-user.dto.js';
+import { InviteUserDto } from './dto/invite-user.dto.js';
 import { UpdateUserDto } from './dto/update-user.dto.js';
 import { UserService } from './user.service.js';
 
@@ -9,9 +22,10 @@ import { UserService } from './user.service.js';
 export class UserController {
   constructor(private users: UserService) {}
 
-  @Post()
-  create(@Body() dto: CreateUserDto) {
-    return this.users.create(dto);
+  @Post('invite')
+  @HttpCode(HttpStatus.CREATED)
+  invite(@Req() req: { user: { sub: number } }, @Body() dto: InviteUserDto) {
+    return this.users.invite(req.user.sub, dto);
   }
 
   @Get()

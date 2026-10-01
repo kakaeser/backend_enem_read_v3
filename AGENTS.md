@@ -7,7 +7,7 @@
 
 ## Stack
 - NestJS 12 + TypeScript 6 + Node, ESM (`"type": "module"`, `module`/`moduleResolution`: `nodenext`).
-- **Prisma 6 + Postgres** (v6 LTS; não migrar para v7/v8 sem motivo). DB hospedado em **Neon** (`neon link`, `neon.ts`, `.neon`), app em **Google Cloud Run** + front no **Cloudflare Pages**. Legado usava SQLAlchemy `Base` em `backend/config/base.py`.
+- **Prisma 6 + Postgres** (v6 LTS; não migrar para v7/v8 sem motivo). DB hospedado em **Neon** (`neon link`, `neon.ts`, `.neon`), app em **Render** + front no **Cloudflare Pages**. Legado usava SQLAlchemy `Base` em `backend/config/base.py`.
 - Auth: **JWT com refresh** — Adm: access 15m (`JWT_SECRET`) + refresh 7d (`JWT_REFRESH_SECRET`, hash sha256 em `refresh_tokens`, rotação com `jti`); Aplicador: access **6h** (`APLICADOR_JWT_EXPIRES_IN`), sem refresh. `Bearer` header. `JwtStrategy.validate` confere existência/`APROVADO` no banco a cada request.
 - **Sem WebSocket/Realtime** — ranking estático, divulgação por link 2 dias após `encerramento` (decisão registrada no spec).
 - Entrypoints: `src/main.ts` (bootstrap com `ValidationPipe` global + CORS via `FRONTEND_URL`), `src/app.module.ts`.
@@ -23,7 +23,8 @@
 - **Gotcha `presenca`**: service passa default explícito — manual/bulk nascem `true`, **import Excel nasce `false`** (decisão: ausente até confirmação). Não confie só no default do banco.
 
 ## API implementada (v3, ver `.agents/specs/spec-tasks.md`)
-- Auth: `POST /auth/login` → `{access_token, refresh_token}`, `POST /auth/refresh` (rotaciona), `POST /auth/logout`, `POST /auth/aplicador` (`403` se `PENDENTE`/`REJEITADO` ou prova não `in_progress`). `POST /users` exige JWT (bootstrap via `npm run seed`: `admin@read.local`/`admin123`).
+- Auth Adm: `POST /auth/login` → `{access_token, adm}` + cookie HttpOnly `refresh_token` (path `/auth`); `POST /auth/refresh` / `logout` leem o cookie (sem body de refresh; front `credentials: 'include'`). Públicos: `POST /auth/accept-invite`, `forgot-password` (200), `reset-password` (200). `POST /auth/aplicador` (`403` se `PENDENTE`/`REJEITADO` ou prova não `in_progress`) — só access JWT 6h, sem cookie. E-mail/convite/Excel: ver [`.agents/specs/spec-resend-email-tasks.md`](.agents/specs/spec-resend-email-tasks.md) e [`docs/front-handoff-resend-auth.md`](docs/front-handoff-resend-auth.md).
+- Users (JWT): `POST /users/invite` (onboarding por e-mail); `GET/PATCH/DELETE /users` — **sem** `POST /users` com senha. Bootstrap dev: `npm run seed` (`admin@read.local`/`admin123`).
 - Aplicadores: `POST /aplicadores` (público, cria `PENDENTE`), `GET /aplicadores?provaId=`, `GET /aplicadores/me` (JWT do aplicador, polling 5s do front), `PATCH /:id/status`, `DELETE /:id` (guard).
 - Exams: `POST /exams` cria Exam + N Questions vazias em transaction; `GET /exams` (+`?status=`); `GET /:id`; `PATCH /:id`, `/:id/status`, `DELETE /:id` (guard; GETs públicos).
 - Questions (`exams/:examId/questions`, no `ExamsModule`): `PUT bulk` (upsert; `id`→update, senão resolve por `numero`; valida `correctAnswer ∈ alternativas` A–D; guard ADM), `GET /`, `GET /:id`, `DELETE /:id` (guard).
@@ -33,7 +34,7 @@
 
 ## Infra / Deploy
 - **DB: Neon Postgres** (`neon link --project-id hidden-smoke-48757721`, `neon.ts`, `.neon` gitignored) — `DATABASE_URL` (pooler) + `DIRECT_URL` (= `DATABASE_URL_UNPOOLED`, direct) em `.env` (gitignored). `prisma/legacy/database.db` (backup real) também gitignored — nunca commitar.
-- **App: Google Cloud Run** — `PORT` em `src/main.ts:14` (`process.env.PORT ?? 3030`, Cloud Run injeta `PORT`). `Dockerfile` multi-stage (node:22-slim, `prisma generate` no build, `migrate deploy && node dist/main` no start). Deploy: `gcloud run deploy --set-env-vars DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL` (nunca `nest deploy`/`mau`). Front no Cloudflare Pages → `FRONTEND_URL` aceita lista por vírgula (`"https://x.pages.dev,http://localhost:3001"`).
+- **App: Render** — `PORT` em `src/main.ts` (`process.env.PORT ?? 3030`; Render injeta `PORT`). `Dockerfile` multi-stage (node:22-slim, `prisma generate` no build, `migrate deploy && node dist/main` no start) ou build nativo Render. Env: `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL`. E-mail (Resend): `RESEND_API_KEY` (obrigatório em prod; opcional dev/test → no-op), `EMAIL_FROM` (domínio verificado), `ADM_INVITE_EXPIRES_IN` / `ADM_RESET_EXPIRES_IN` (defaults `7d` / `1h`). Links absolutos nos e-mails: `frontendBaseUrl()` — primeira origem de `FRONTEND_URL` (`src/common/frontend-url.ts`); CORS usa lista completa via `parseFrontendOrigins()`. Keep-alive free tier: [`docs/render-keep-alive.md`](docs/render-keep-alive.md) (cron-job.org em `GET /`). Front no Cloudflare Pages → `FRONTEND_URL` lista por vírgula.
 
 ## Package Manager
 - `npm` — lockfile `package-lock.json`. Use `npm install`, não yarn/pnpm.
@@ -82,7 +83,7 @@ dist/         build output (gitignored)
 .agents/
 ├── specs/    # spec-enem-read-v3-mvp.md + spec-tasks.md ([X]/[ ] rastreia progresso)
 └── skills/   # gitignored, restaurar via npx skills experimental_install
-Dockerfile    # Cloud Run
+Dockerfile    # Render / Docker (migrate deploy + node dist/main)
 ```
 Single package, sem monorepo.
 

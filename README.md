@@ -33,7 +33,7 @@
 
 ```bash
 $ npm install
-$ cp .env.example .env  # preencha DATABASE_URL/DIRECT_URL (Neon) + JWT_SECRET/JWT_REFRESH_SECRET/APLICADOR_JWT_EXPIRES_IN + FRONTEND_URL
+$ cp .env.example .env  # preencha DATABASE_URL/DIRECT_URL (Neon) + JWT_* + FRONTEND_URL; opcional RESEND_API_KEY/EMAIL_FROM (e-mail)
 $ npx prisma validate
 $ npx prisma migrate deploy  # ou migrate dev --name init em dev
 $ npx prisma generate
@@ -54,7 +54,7 @@ $ npm run start:dev
 $ npm run start:prod
 ```
 
-> ESM: imports com `.js` (`from './app.module.js'`) obrigatório por `nodenext`. `PORT` vem de `process.env.PORT ?? 3030` (Cloud Run injeta). CORS liberado via `FRONTEND_URL` (lista por vírgula).
+> ESM: imports com `.js` (`from './app.module.js'`) obrigatório por `nodenext`. `PORT` vem de `process.env.PORT ?? 3030` (Render injeta). CORS liberado via `FRONTEND_URL` (lista por vírgula).
 
 ## Run tests
 
@@ -69,22 +69,21 @@ $ npm run test:e2e    # vitest --config ./vitest.config.e2e.ts, **/*.e2e-spec.ts
 $ npm run test:cov
 ```
 
-> Testes são **Vitest** (não Jest) com `vite-tsconfig-paths`, `globals: true`. Lint é **oxlint** (`npm run lint`), não ESLint. Format é `prettier` (`singleQuote`). Testes **não usam o Neon**: `test/mocks/in-memory-prisma.ts` substitui o `PrismaService`; e2e do fluxo completo em `test/enem-flow.e2e-spec.ts`.
+> Testes são **Vitest** (não Jest) com `vite-tsconfig-paths`, `globals: true`. Lint é **oxlint** (`npm run lint`), não ESLint. Format é `prettier` (`singleQuote`). Testes **não usam o Neon**: `test/mocks/in-memory-prisma.ts` substitui o `PrismaService`; e2e em `test/enem-flow.e2e-spec.ts` e `test/email-flow.e2e-spec.ts`.
+>
+> **Auth Adm:** refresh em cookie HttpOnly (não no JSON); convite/reset por e-mail (Resend). Contrato para o front: [`docs/front-handoff-resend-auth.md`](docs/front-handoff-resend-auth.md).
 
 ## Deployment
 
-When you're ready to deploy your NestJS application to production, there are some key steps you can take to ensure it runs as efficiently as possible. Check out the [deployment documentation](https://docs.nestjs.com/deployment) for more information.
+> **ENEM v3 — infra atual:** **Neon Postgres** (banco) + **Render** (API, plano free) + **Cloudflare Pages** (front). Ver [`AGENTS.md`](AGENTS.md) e [`docs/render-keep-alive.md`](docs/render-keep-alive.md).
 
-If you are looking for a cloud-based platform to deploy your NestJS application, check out [Mau](https://mau.nestjs.com), our official platform for deploying NestJS applications on AWS. Mau makes deployment straightforward and fast, requiring just a few simple steps:
+Build local: `npm run build` → `dist/`. Produção usa o [`Dockerfile`](Dockerfile) (multi-stage, `prisma migrate deploy && node dist/main` no start) ou build nativo do Render.
 
-```bash
-$ npm install -g @nestjs/mau
-$ mau deploy
-```
+**Variáveis no Render** (Environment): `DATABASE_URL`, `DIRECT_URL`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `FRONTEND_URL` (URLs do front separadas por vírgula, ex. `https://seu-projeto.pages.dev,http://localhost:3001`). Para e-mail (convite/reset/Excel pós-prova): `RESEND_API_KEY`, `EMAIL_FROM` (domínio verificado no Resend); opcionais `ADM_INVITE_EXPIRES_IN` (default `7d`), `ADM_RESET_EXPIRES_IN` (default `1h`). Links nos e-mails usam a **primeira** origem de `FRONTEND_URL` (`frontendBaseUrl()` em `src/common/frontend-url.ts`). Ver [`.env.example`](.env.example).
 
-With Mau, you can deploy your application in just a few clicks, allowing you to focus on building features rather than managing infrastructure.
+**Keep-alive (Render free):** o serviço dorme ~15 min sem HTTP. Ping `GET /` via [cron-job.org](https://cron-job.org) a cada 10–14 min (janela **06:00–23:59** Brasília recomendada) — detalhes em [`docs/render-keep-alive.md`](docs/render-keep-alive.md).
 
-> **ENEM v3** usa **Neon Postgres** (não Supabase local). Deploy principal documentado: **Google Cloud Run** (`Dockerfile`, `gcloud run deploy --set-env-vars DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL`). Alternativa **Render (free)**: ping em `GET /` via [cron-job.org](https://cron-job.org) — ver [`docs/render-keep-alive.md`](docs/render-keep-alive.md). DB via `neon link` (`.neon`, `neon.ts`). Ver `AGENTS.md` para infra.
+DB local/dev: `neon link` (`.neon`, `neon.ts`, gitignored).
 
 ## Resources
 

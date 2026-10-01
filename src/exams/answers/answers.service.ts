@@ -1,6 +1,13 @@
 import { BadRequestException, Injectable, NotFoundException } from '@nestjs/common';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { AnswerItemDto } from './dto/answer-item.dto.js';
+
+const BULK_ANSWER_CHUNK = 500;
+
+type BulkAnswerTx = Pick<PrismaService, 'answer'> & {
+  $executeRaw?: (query: TemplateStringsArray, ...values: unknown[]) => Promise<number>;
+};
 
 @Injectable()
 export class AnswersService {
@@ -34,17 +41,37 @@ export class AnswersService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const results: any[] = [];
-      for (const item of items) {
-        const saved = await tx.answer.upsert({
-          where: { userId_questId: { userId: item.userId, questId: item.questId } },
-          update: { alternativa: item.alternativa, manuallyReviewed: true },
-          create: { userId: item.userId, questId: item.questId, alternativa: item.alternativa },
-        });
-        results.push(saved);
-      }
-      return { saved: results.length };
+      await this.persistBulkAnswers(tx, items);
+      return { saved: items.length };
     });
+  }
+
+  private async persistBulkAnswers(tx: BulkAnswerTx, items: AnswerItemDto[]) {
+    if (typeof tx.$executeRaw === 'function') {
+      for (let i = 0; i < items.length; i += BULK_ANSWER_CHUNK) {
+        const chunk = items.slice(i, i + BULK_ANSWER_CHUNK);
+        const values = Prisma.join(
+          chunk.map((item) => Prisma.sql`(${item.userId}, ${item.questId}, ${item.alternativa}, true)`),
+        );
+        await tx.$executeRaw`
+          INSERT INTO resultados (user_id, quest_id, alternativa, manually_reviewed)
+          VALUES ${values}
+          ON CONFLICT (user_id, quest_id)
+          DO UPDATE SET
+            alternativa = EXCLUDED.alternativa,
+            manually_reviewed = EXCLUDED.manually_reviewed
+        `;
+      }
+      return;
+    }
+
+    for (const item of items) {
+      await tx.answer.upsert({
+        where: { userId_questId: { userId: item.userId, questId: item.questId } },
+        update: { alternativa: item.alternativa, manuallyReviewed: true },
+        create: { userId: item.userId, questId: item.questId, alternativa: item.alternativa },
+      });
+    }
   }
 
   async update(id: number, alternativa: string) {

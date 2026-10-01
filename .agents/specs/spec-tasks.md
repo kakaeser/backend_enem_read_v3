@@ -19,18 +19,19 @@
 - [X] `src/auth/dto/login.dto.ts` (email, senha) + `aplicador-login.dto.ts` + `refresh.dto.ts` com class-validator
 - [X] `src/auth/jwt.strategy.ts` + `src/auth/guards/jwt-auth.guard.ts` (Bearer, 15m) com validação no banco (lança 401 se Adm/Aplicador deletado ou reprovado)
 - [X] `prisma/schema.prisma` model `RefreshToken` (id cuid, admId FK, tokenHash sha256 unique, expiresAt, revoked) + `prisma/migrations/20260908130043_add_refresh_tokens`
-- [X] `src/auth/auth.service.ts` — `validateAdm` bcrypt, `issueTokens` (access 15m JWT_SECRET + refresh 7d JWT_REFRESH_SECRET, hash sha256 salvo), `loginAdm` → `{access_token, refresh_token}`, `refresh` (rotaciona, revoga antigo), `logout` (revoga), `loginAplicador` (sem refresh, access **6h** via `APLICADOR_JWT_EXPIRES_IN` — cobre a prova inteira; `JwtStrategy` continua barrando via `status` no banco)
-- [X] `src/auth/auth.controller.ts` — `POST /auth/login` → `{access_token, refresh_token}`, `POST /auth/refresh` → novos tokens, `POST /auth/logout`, `POST /auth/aplicador` com gate APROVADO + in_progress
+- [X] `src/auth/auth.service.ts` — `validateAdm` bcrypt, `issueTokens`, `loginAdm`, `refresh` (rotaciona), `logout`, `acceptInvite` / `forgotPassword` / `resetPassword`, `loginAplicador` (access **6h**, sem refresh)
+- [X] `src/auth/auth.controller.ts` — `login` → `{access_token, adm}` + `Set-Cookie` refresh; `refresh`/`logout` via cookie; `accept-invite`, `forgot-password` (200), `reset-password` (200); `aplicador` com gate APROVADO + in_progress
+- [X] Refresh Adm em cookie HttpOnly — detalhes e e-mail Resend: [spec-resend-email-tasks.md](./spec-resend-email-tasks.md); handoff front: [`docs/front-handoff-resend-auth.md`](../../docs/front-handoff-resend-auth.md)
 - [X] `AuthModule` com `JwtModule` + `PassportModule` + `JwtStrategy` (injeta PrismaService), `ValidationPipe` global em `main.ts`
 - [X] Teste manual: `POST /auth/login admin@read.local/admin123` → 200 com ambos tokens, `refresh` rotaciona e antigo dá 401, `aplicador` bloqueado se PENDENTE
 
 ## 3. Users (Adm) & Aplicadores [X]
 
 ### 3a. Users (=Adm)
-- [X] `src/user/dto/create-user.dto.ts` + `update-user.dto.ts` (class-validator)
-- [X] `src/user/user.service.ts` — hash bcrypt em create/update, email unique 409
-- [X] `src/user/user.controller.ts` — `POST /users`, `GET /users`, `GET /users/:id`, `PATCH /users/:id`, `DELETE /users/:id` (guard JwtAuthGuard, @Controller('users'))
-- [X] Teste manual: `POST /users novo@read.local` 201, `GET /users` lista 2, duplicate 409 (via service), sem token 401 (guard)
+- [X] `src/user/dto/invite-user.dto.ts` + `update-user.dto.ts` (class-validator)
+- [X] `src/user/user.service.ts` — `invite` (mail + token), update/remove, email unique 409
+- [X] `src/user/user.controller.ts` — `POST /users/invite`, `GET /users`, `GET /users/:id`, `PATCH /users/:id`, `DELETE /users/:id` (guard JwtAuthGuard)
+- [X] Testes: `user.service.spec` (invite/409), `test/email-flow.e2e-spec.ts` (convite end-to-end)
 
 ### 3b. Aplicadores
 - [X] `src/aplicadores/dto/create-aplicador.dto.ts` (nome, provaId) + `update-status.dto.ts` (IsEnum)
@@ -84,10 +85,15 @@
 - [X] `src/exams/results/results.service.spec.ts` unit real (tudo certo/parcial/sem respostas/redacao null/ordenação+respondidas/ausente fora) + demais `*.spec.ts` com `InMemoryPrisma` e `overrideGuard(JwtAuthGuard)`
 - [X] `npm run lint && npm run build && npm run test (19) && npm run test:e2e (15) && npx prisma validate` verdes
 - [X] Fixes achados pelo e2e: `participants.service` default `presenca` → `true` (estava `false`, sobrescrevia o DB default) e `auth.service issueTokens` com `jti: randomUUID()` (dois logins no mesmo segundo geravam refresh idêntico → P2002 500)
-- [X] `Dockerfile` (node:22-slim multi-stage, `prisma generate` no build, `migrate deploy && node dist/main` no start) — deploy: `gcloud run deploy --set-env-vars DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL` (não usar `nest deploy`)
+- [X] `Dockerfile` (node:22-slim multi-stage, `prisma generate` no build, `migrate deploy && node dist/main` no start) — deploy: **Render** com env `DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL` (não usar `nest deploy` / Cloud Run)
 
 ## 9. Docs & Housekeeping [X] parcial
 
 - [X] `AGENTS.md` sincronizado: sem Socket.IO, Neon (não Supabase), JWT com refresh + aplicador 6h, data model real (sem `role`, `status` enum, sem `exam_id` em Answer, `RefreshToken`), API implementada por módulo, `presenca` import=false, `PORT 3030`, testes com mock, structure com `prisma/seed-test.ts` + `test/mocks` + `Dockerfile`
 - [X] `README.md` (edição incremental, boilerplate Nest preservado): `GET /resultados` + guarda 2 dias, `.xlsx` no fluxo, `seed:test`, `PORT 3030`, testes com mock, envs completas no deploy
-- [ ] `specs/spec-enem-read-v3-mvp.md` publicado no tracker com label `ready-for-agent` após `/setup-matt-pocock-skills`
+- [X] `specs/spec-enem-read-v3-mvp.md` — infra Neon + Render (não Supabase/Cloud Run)
+- [ ] Publicar no tracker com label `ready-for-agent` após `/setup-matt-pocock-skills`
+
+## 10. Resend e-mail + auth cookie [ ] — ver [spec-resend-email-tasks.md](./spec-resend-email-tasks.md)
+
+- [ ] Implementar checklist completo em `spec-resend-email-tasks.md` (spec: [spec-resend-email.md](./spec-resend-email.md))
