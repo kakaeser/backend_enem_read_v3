@@ -157,6 +157,10 @@ export class InMemoryPrisma {
           return false;
         });
       }
+      if (typeof v === 'boolean') {
+        if (v === false) return row[k] !== true;
+        return row[k] === true;
+      }
       return row[k] === v;
     });
   }

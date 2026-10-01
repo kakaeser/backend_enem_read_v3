@@ -69,7 +69,9 @@ $ npm run test:e2e    # vitest --config ./vitest.config.e2e.ts, **/*.e2e-spec.ts
 $ npm run test:cov
 ```
 
-> Testes são **Vitest** (não Jest) com `vite-tsconfig-paths`, `globals: true`. Lint é **oxlint** (`npm run lint`), não ESLint. Format é `prettier` (`singleQuote`). Testes **não usam o Neon**: `test/mocks/in-memory-prisma.ts` substitui o `PrismaService`; e2e do fluxo completo em `test/enem-flow.e2e-spec.ts`.
+> Testes são **Vitest** (não Jest) com `vite-tsconfig-paths`, `globals: true`. Lint é **oxlint** (`npm run lint`), não ESLint. Format é `prettier` (`singleQuote`). Testes **não usam o Neon**: `test/mocks/in-memory-prisma.ts` substitui o `PrismaService`; e2e em `test/enem-flow.e2e-spec.ts` e `test/email-flow.e2e-spec.ts`.
+>
+> **Auth Adm:** refresh em cookie HttpOnly (não no JSON); convite/reset por e-mail (Resend). Contrato para o front: [`docs/front-handoff-resend-auth.md`](docs/front-handoff-resend-auth.md).
 
 ## Deployment
 

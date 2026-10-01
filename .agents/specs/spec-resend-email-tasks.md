@@ -71,34 +71,34 @@
 - [X] Confirmar `POST /auth/aplicador` inalterado (sem cookie)
 - [X] Atualizar DTO `RefreshDto` / controller — refresh sem body obrigatório (breaking)
 
-## 9. Testes unit [ ]
+## 9. Testes unit [X]
 
-- [ ] `src/exams/results/results-export.service.spec.ts` — ExcelJS read-back headers + row count
-- [ ] Ajustar `auth.service.spec.ts` / `auth.controller.spec.ts` para cookie helpers (mock `@Res()` se necessário)
-- [ ] `user.service.spec.ts` — invite 409, accept paths (mock mail/token service)
+- [X] `src/exams/results/results-export.service.spec.ts` — ExcelJS read-back headers + row count
+- [X] Ajustar `auth.service.spec.ts` / `auth.controller.spec.ts` para cookie helpers (mock `@Res()` se necessário)
+- [X] `user.service.spec.ts` — invite 409, accept paths (mock mail/token service)
 
-## 10. Testes e2e [ ]
+## 10. Testes e2e [X]
 
-- [ ] `test/email-flow.e2e-spec.ts` — `overrideProvider(MailService)` + fake mail + InMemoryPrisma estendido
-- [ ] Fluxo: login → invite → token do fake → accept-invite → login
-- [ ] Fluxo: forgot → reset → login nova senha; refresh pré-reset → 401
-- [ ] Fluxo: exam in_progress → PATCH completed → N emails com anexo
-- [ ] accept-invite expirado → 400; invite email existente → 409
-- [ ] Auth cookie: login `Set-Cookie` HttpOnly, body sem refresh; supertest agent refresh/logout; rotação; reset revoga cookie session
-- [ ] Atualizar `test/enem-flow.e2e-spec.ts` se login/refresh quebrar (cookie + credentials)
+- [X] `test/email-flow.e2e-spec.ts` — `overrideProvider(MailService)` + fake mail + InMemoryPrisma estendido
+- [X] Fluxo: login → invite → token do fake → accept-invite → login
+- [X] Fluxo: forgot → reset → login nova senha; refresh pré-reset → 401
+- [X] Fluxo: exam in_progress → PATCH completed → N emails com anexo
+- [X] accept-invite expirado → 400; invite email existente → 409
+- [X] Auth cookie: login `Set-Cookie` HttpOnly, body sem refresh; supertest agent refresh/logout; rotação; reset revoga cookie session
+- [X] `test/app.e2e-spec.ts` com InMemoryPrisma (sem Neon); `enem-flow` já cobre cookie + credentials
 
-## 11. Verificação final [ ]
+## 11. Verificação final [X]
 
-- [ ] `npm run lint && npm run build && npm run test && npm run test:e2e`
-- [ ] `npx prisma validate`
-- [ ] Smoke manual (opcional): Resend sandbox + login cookie no browser com `credentials`
+- [X] `npm run lint && npm run build && npm run test && npm run test:e2e`
+- [X] `npx prisma validate`
+- [X] Smoke manual (opcional): roteiro em [`docs/smoke-resend-email.md`](../../docs/smoke-resend-email.md)
 
-## 12. Docs & coordenação front [ ]
+## 12. Docs & coordenação front [X]
 
-- [ ] Nota breaking: front — convite em vez de `POST /users` com senha; páginas `/aceitar-convite`, `/redefinir-senha`
-- [ ] Nota breaking: front — access em memória; `credentials: 'include'` em refresh/logout; remover refresh do localStorage
-- [ ] Marcar seção correspondente em `spec-tasks.md` ou link para este arquivo
-- [ ] `[ ]` Issue tracker `ready-for-agent` (quando `/setup-matt-pocock-skills`)
+- [X] Nota breaking: [`docs/front-handoff-resend-auth.md`](../../docs/front-handoff-resend-auth.md) — convite, `/aceitar-convite`, `/redefinir-senha`
+- [X] Nota breaking: mesmo doc — access em memória, `credentials: 'include'`, sem refresh no localStorage
+- [X] `AGENTS.md`, `spec-tasks.md`, `README.md` atualizados; forgot/reset → HTTP 200
+- [ ] Issue tracker `ready-for-agent` (publicar quando `/setup-matt-pocock-skills` — não bloqueia entrega)
 
 ## Fora deste checklist (spec Out of Scope)
 

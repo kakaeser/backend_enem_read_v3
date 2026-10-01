@@ -23,7 +23,8 @@
 - **Gotcha `presenca`**: service passa default explícito — manual/bulk nascem `true`, **import Excel nasce `false`** (decisão: ausente até confirmação). Não confie só no default do banco.
 
 ## API implementada (v3, ver `.agents/specs/spec-tasks.md`)
-- Auth: `POST /auth/login` → `{access_token, refresh_token}`, `POST /auth/refresh` (rotaciona), `POST /auth/logout`, `POST /auth/aplicador` (`403` se `PENDENTE`/`REJEITADO` ou prova não `in_progress`). `POST /users` exige JWT (bootstrap via `npm run seed`: `admin@read.local`/`admin123`).
+- Auth Adm: `POST /auth/login` → `{access_token, adm}` + cookie HttpOnly `refresh_token` (path `/auth`); `POST /auth/refresh` / `logout` leem o cookie (sem body de refresh; front `credentials: 'include'`). Públicos: `POST /auth/accept-invite`, `forgot-password` (200), `reset-password` (200). `POST /auth/aplicador` (`403` se `PENDENTE`/`REJEITADO` ou prova não `in_progress`) — só access JWT 6h, sem cookie. E-mail/convite/Excel: ver [`.agents/specs/spec-resend-email-tasks.md`](.agents/specs/spec-resend-email-tasks.md) e [`docs/front-handoff-resend-auth.md`](docs/front-handoff-resend-auth.md).
+- Users (JWT): `POST /users/invite` (onboarding por e-mail); `GET/PATCH/DELETE /users` — **sem** `POST /users` com senha. Bootstrap dev: `npm run seed` (`admin@read.local`/`admin123`).
 - Aplicadores: `POST /aplicadores` (público, cria `PENDENTE`), `GET /aplicadores?provaId=`, `GET /aplicadores/me` (JWT do aplicador, polling 5s do front), `PATCH /:id/status`, `DELETE /:id` (guard).
 - Exams: `POST /exams` cria Exam + N Questions vazias em transaction; `GET /exams` (+`?status=`); `GET /:id`; `PATCH /:id`, `/:id/status`, `DELETE /:id` (guard; GETs públicos).
 - Questions (`exams/:examId/questions`, no `ExamsModule`): `PUT bulk` (upsert; `id`→update, senão resolve por `numero`; valida `correctAnswer ∈ alternativas` A–D; guard ADM), `GET /`, `GET /:id`, `DELETE /:id` (guard).
