@@ -125,6 +125,8 @@ export class InMemoryPrisma {
         return dir === 'desc' ? -cmp : cmp;
       });
     }
+    if (a.skip != null) rows = rows.slice(a.skip);
+    if (a.take != null) rows = rows.slice(0, a.take);
     return rows;
   }
 
@@ -145,7 +147,16 @@ export class InMemoryPrisma {
       if (k === 'OR') return (v as any[]).some((c) => this.match(row, c));
       if (k === 'NOT') return !this.match(row, v);
       if (v !== null && typeof v === 'object' && !(v instanceof Date) && !Array.isArray(v)) {
-        return Object.entries(v as any).every(([op, val]) => {
+        const filter = v as Record<string, unknown>;
+        if ('contains' in filter) {
+          const needle = String(filter.contains);
+          const hay = String(row[k] ?? '');
+          const insensitive = filter.mode === 'insensitive';
+          return insensitive
+            ? hay.toLowerCase().includes(needle.toLowerCase())
+            : hay.includes(needle);
+        }
+        return Object.entries(filter).every(([op, val]) => {
           const rv = row[k] instanceof Date ? row[k].getTime() : row[k];
           const cv = val instanceof Date ? (val as Date).getTime() : val;
           if (op === 'in') return (val as any[]).includes(row[k]);
@@ -154,6 +165,7 @@ export class InMemoryPrisma {
           if (op === 'lt') return rv < (cv as any);
           if (op === 'gte') return rv >= (cv as any);
           if (op === 'gt') return rv > (cv as any);
+          if (op === 'mode') return true;
           return false;
         });
       }

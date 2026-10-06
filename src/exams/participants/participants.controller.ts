@@ -7,12 +7,14 @@ import {
   ParseIntPipe,
   Patch,
   Post,
+  Query,
   UseGuards,
 } from '@nestjs/common';
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { BulkParticipantsDto } from './dto/bulk-participants.dto.js';
 import { CreateParticipantDto } from './dto/create-participant.dto.js';
+import { ListParticipantsQueryDto } from './dto/list-participants-query.dto.js';
 import { UpdatePresencaDto } from './dto/update-presenca.dto.js';
 import { UpdateRedacaoDto } from './dto/update-redacao.dto.js';
 import { ParticipantsService } from './participants.service.js';
@@ -35,13 +37,19 @@ export class ParticipantsController {
   }
 
   @Get()
-  findAll(@Param('examId', ParseIntPipe) examId: number) {
-    return this.participants.findAll(examId);
+  findAll(
+    @Param('examId', ParseIntPipe) examId: number,
+    @Query() query: ListParticipantsQueryDto,
+  ) {
+    return this.participants.findAll(examId, query);
   }
 
   @Get('presentes')
-  findAllPresente(@Param('examId', ParseIntPipe) examId: number) {
-    return this.participants.findAllPresente(examId);
+  findAllPresente(
+    @Param('examId', ParseIntPipe) examId: number,
+    @Query() query: ListParticipantsQueryDto,
+  ) {
+    return this.participants.findAllPresente(examId, query);
   }
 
   @Patch(':id/presenca')

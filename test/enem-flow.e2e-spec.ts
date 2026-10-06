@@ -150,7 +150,8 @@ describe('ENEM Read fluxo completo (e2e, prisma mockado)', () => {
         .set('Authorization', `Bearer ${token}`)
         .expect(200)
     ).body;
-    const dos = list.find((x: { nome: string }) => x.nome === 'E2E Dos');
+    expect(list.meta?.total).toBeGreaterThanOrEqual(2);
+    const dos = list.data.find((x: { nome: string }) => x.nome === 'E2E Dos');
     expect(dos.consultaCode).toMatch(/^[A-Z2-9]{8}$/);
     expect(dos.presenca).toBe(false);
     await http(app.getHttpServer())

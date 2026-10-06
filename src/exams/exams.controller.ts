@@ -2,6 +2,7 @@ import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query,
 import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { CreateExamDto } from './dto/create-exam.dto.js';
+import { ListExamsQueryDto } from './dto/list-exams-query.dto.js';
 import { UpdateExamDto } from './dto/update-exam.dto.js';
 import { UpdateStatusDto } from './dto/update-status.dto.js';
 import { ExamsService } from './exams.service.js';
@@ -19,8 +20,8 @@ export class ExamsController {
   }
 
   @Get()
-  findAll(@Query('status') status?: string) {
-    return this.exams.findAll(status);
+  findAll(@Query() query: ListExamsQueryDto) {
+    return this.exams.findAll(query);
   }
 
   @Get(':id')
