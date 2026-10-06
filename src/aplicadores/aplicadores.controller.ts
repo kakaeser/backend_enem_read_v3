@@ -1,9 +1,11 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Patch, Post, Query, Req, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard.js';
 import { AplicadoresService } from './aplicadores.service.js';
 import { CreateAplicadorDto } from './dto/create-aplicador.dto.js';
 import { UpdateStatusDto } from './dto/update-status.dto.js';
 
+@ApiTags('aplicadores')
 @Controller('aplicadores')
 export class AplicadoresController {
   constructor(private aplicadores: AplicadoresService) {}
@@ -13,6 +15,7 @@ export class AplicadoresController {
     return this.aplicadores.create(dto);
   }
 
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Get('me')
   me(@Req() req: any) {
@@ -26,12 +29,14 @@ export class AplicadoresController {
     return this.aplicadores.findAll(pid);
   }
 
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Patch(':id/status')
   updateStatus(@Param('id', ParseIntPipe) id: number, @Body() dto: UpdateStatusDto) {
     return this.aplicadores.updateStatus(id, dto.status);
   }
 
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Param('id', ParseIntPipe) id: number) {

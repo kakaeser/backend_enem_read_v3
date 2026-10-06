@@ -9,6 +9,7 @@ import {
   Post,
   UseGuards,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { BulkParticipantsDto } from './dto/bulk-participants.dto.js';
 import { CreateParticipantDto } from './dto/create-participant.dto.js';
@@ -16,6 +17,8 @@ import { UpdatePresencaDto } from './dto/update-presenca.dto.js';
 import { UpdateRedacaoDto } from './dto/update-redacao.dto.js';
 import { ParticipantsService } from './participants.service.js';
 
+@ApiTags('participants')
+@ApiBearerAuth('access-token')
 @Controller('exams/:examId/participants')
 @UseGuards(JwtAuthGuard)
 export class ParticipantsController {

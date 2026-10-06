@@ -1,9 +1,12 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Patch, Post, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { AnswersService } from './answers.service.js';
 import { BulkAnswersDto } from './dto/bulk-answers.dto.js';
 import { UpdateAnswerDto } from './dto/update-answer.dto.js';
 
+@ApiTags('answers')
+@ApiBearerAuth('access-token')
 @Controller('exams/:examId/answers')
 @UseGuards(JwtAuthGuard)
 export class AnswersController {

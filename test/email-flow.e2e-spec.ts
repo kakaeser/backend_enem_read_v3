@@ -2,9 +2,8 @@ import { ValidationPipe, INestApplication } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import * as bcrypt from 'bcrypt';
 import cookieParser from 'cookie-parser';
-import request from 'supertest';
-import { App } from 'supertest/types';
 import { AppModule } from '../src/app.module.js';
+import { E2E_APP_API_KEY, http } from './helpers/supertest-app-key.js';
 import { MailService } from '../src/mail/mail.service.js';
 import { PrismaService } from '../src/prisma/prisma.service.js';
 import { FakeMailService } from './mocks/fake-mail.service.js';
@@ -26,11 +25,12 @@ async function waitForMailCount(fake: FakeMailService, count: number, timeoutMs 
 }
 
 describe('Fluxos de e-mail (e2e, prisma + mail mockados)', () => {
-  let app: INestApplication<App>;
+  let app: INestApplication;
   let mock: InMemoryPrisma;
   let fakeMail: FakeMailService;
 
   beforeAll(async () => {
+    process.env.APP_API_KEY = E2E_APP_API_KEY;
     process.env.JWT_SECRET = process.env.JWT_SECRET ?? 'e2e-jwt-secret';
     process.env.JWT_REFRESH_SECRET = process.env.JWT_REFRESH_SECRET ?? 'e2e-refresh-secret';
 
@@ -52,6 +52,7 @@ describe('Fluxos de e-mail (e2e, prisma + mail mockados)', () => {
   }, 30000);
 
   afterAll(async () => {
+    delete process.env.APP_API_KEY;
     await app.close();
   });
 
@@ -60,7 +61,7 @@ describe('Fluxos de e-mail (e2e, prisma + mail mockados)', () => {
   });
 
   it('login Set-Cookie HttpOnly sem refresh no body', async () => {
-    const res = await request(app.getHttpServer())
+    const res = await http(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'e2e@read.local', senha: 'e2e-pass' })
       .expect(201);
@@ -70,13 +71,13 @@ describe('Fluxos de e-mail (e2e, prisma + mail mockados)', () => {
   });
 
   it('convite: login → invite → accept-invite → login novo Adm', async () => {
-    const login = await request(app.getHttpServer())
+    const login = await http(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'e2e@read.local', senha: 'e2e-pass' })
       .expect(201);
     const access = login.body.access_token;
 
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .post('/users/invite')
       .set('Authorization', `Bearer ${access}`)
       .send({ email: 'convidado@read.local' })
@@ -85,23 +86,23 @@ describe('Fluxos de e-mail (e2e, prisma + mail mockados)', () => {
     expect(fakeMail.sent).toHaveLength(1);
     const inviteToken = extractTokenFromHtml(fakeMail.sent[0]!.html);
 
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .post('/auth/accept-invite')
       .send({ token: inviteToken, senha: 'convite123' })
       .expect(201);
 
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'convidado@read.local', senha: 'convite123' })
       .expect(201);
   });
 
   it('invite e-mail já cadastrado → 409', async () => {
-    const login = await request(app.getHttpServer())
+    const login = await http(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'e2e@read.local', senha: 'e2e-pass' })
       .expect(201);
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .post('/users/invite')
       .set('Authorization', `Bearer ${login.body.access_token}`)
       .send({ email: 'e2e@read.local' })
@@ -110,11 +111,11 @@ describe('Fluxos de e-mail (e2e, prisma + mail mockados)', () => {
   });
 
   it('accept-invite token expirado → 400', async () => {
-    const login = await request(app.getHttpServer())
+    const login = await http(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'e2e@read.local', senha: 'e2e-pass' })
       .expect(201);
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .post('/users/invite')
       .set('Authorization', `Bearer ${login.body.access_token}`)
       .send({ email: 'expirado@read.local' })
@@ -123,43 +124,43 @@ describe('Fluxos de e-mail (e2e, prisma + mail mockados)', () => {
     const row = await mock.admEmailToken.findFirst({ where: { email: 'expirado@read.local' } });
     await mock.admEmailToken.update({ where: { id: row!.id }, data: { expiresAt: new Date(Date.now() - 60_000) } });
 
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .post('/auth/accept-invite')
       .send({ token, senha: 'senha123' })
       .expect(400);
   });
 
   it('forgot → reset → login; refresh pré-reset → 401', async () => {
-    const agent = request.agent(app.getHttpServer());
+    const agent = http(app.getHttpServer()).agent();
     await agent.post('/auth/login').send({ email: 'e2e@read.local', senha: 'e2e-pass' }).expect(201);
     const staleCookie = (await agent.post('/auth/refresh').expect(201)).headers['set-cookie']?.[0]?.split(';')[0];
 
-    await request(app.getHttpServer()).post('/auth/forgot-password').send({ email: 'e2e@read.local' }).expect(200);
+    await http(app.getHttpServer()).post('/auth/forgot-password').send({ email: 'e2e@read.local' }).expect(200);
     expect(fakeMail.sent).toHaveLength(1);
     const resetToken = extractTokenFromHtml(fakeMail.sent[0]!.html);
 
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .post('/auth/reset-password')
       .send({ token: resetToken, senha: 'nova-e2e-pass' })
       .expect(200);
 
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .post('/auth/refresh')
       .set('Cookie', staleCookie ?? '')
       .expect(401);
 
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'e2e@read.local', senha: 'nova-e2e-pass' })
       .expect(201);
   });
 
   it('refresh/logout com agent: rotação e cookie limpo', async () => {
-    const agent = request.agent(app.getHttpServer());
+    const agent = http(app.getHttpServer()).agent();
     const login = await agent.post('/auth/login').send({ email: 'e2e@read.local', senha: 'nova-e2e-pass' }).expect(201);
     const staleCookie = login.headers['set-cookie']?.[0]?.split(';')[0];
     await agent.post('/auth/refresh').expect(201);
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .post('/auth/refresh')
       .set('Cookie', staleCookie ?? '')
       .expect(401);
@@ -168,34 +169,34 @@ describe('Fluxos de e-mail (e2e, prisma + mail mockados)', () => {
   });
 
   it('PATCH completed envia e-mail com anexo para cada Adm', async () => {
-    const login = await request(app.getHttpServer())
+    const login = await http(app.getHttpServer())
       .post('/auth/login')
       .send({ email: 'e2e@read.local', senha: 'nova-e2e-pass' })
       .expect(201);
     const access = login.body.access_token;
     const admCount = (await mock.adm.findMany()).length;
 
-    const exam = await request(app.getHttpServer())
+    const exam = await http(app.getHttpServer())
       .post('/exams')
       .set('Authorization', `Bearer ${access}`)
       .send({ nome: 'Mail Prova', qtdQuestoes: 1 })
       .expect(201);
     const examId = exam.body.id;
 
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .patch(`/exams/${examId}/status`)
       .set('Authorization', `Bearer ${access}`)
       .send({ status: 'in_progress' })
       .expect(200);
 
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .post(`/exams/${examId}/participants`)
       .set('Authorization', `Bearer ${access}`)
       .send({ nome: 'Presente', presenca: true })
       .expect(201);
 
     const before = fakeMail.sent.length;
-    await request(app.getHttpServer())
+    await http(app.getHttpServer())
       .patch(`/exams/${examId}/status`)
       .set('Authorization', `Bearer ${access}`)
       .send({ status: 'completed' })
