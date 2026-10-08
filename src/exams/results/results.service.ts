@@ -11,6 +11,26 @@ import { normalizeConsultaCode } from '../participants/consulta-code.util.js';
 const CONSULTA_RATE_WINDOW_MS = 60_000;
 const CONSULTA_RATE_MAX = 30;
 
+type NotaAnswerInput = {
+  alternativa: string;
+  quest: { correctAnswer: string; peso: number };
+};
+
+function computeNotaFromLoaded(
+  answers: NotaAnswerInput[],
+  sumPesos: number,
+  notaSimbolica: number,
+  redacaoNota: number | null | undefined,
+) {
+  const earned = answers.reduce(
+    (s, a) => s + (a.alternativa === a.quest.correctAnswer ? a.quest.peso : 0),
+    0,
+  );
+  const ponderada = sumPesos > 0 ? (earned / sumPesos) * notaSimbolica : 0;
+  const redacao = redacaoNota ?? null;
+  return { ponderada, redacao, total: ponderada + (redacao ?? 0) };
+}
+
 @Injectable()
 export class ResultsService {
   private consultaRate = new Map<string, { count: number; resetAt: number }>();
@@ -44,10 +64,12 @@ export class ResultsService {
       _sum: { peso: true },
     });
     const sumPesos = allPeso._sum.peso ?? 0;
-    const earned = participant.answers.reduce((s, a) => s + (a.alternativa === a.quest.correctAnswer ? a.quest.peso : 0), 0);
-    const ponderada = sumPesos > 0 ? (earned / sumPesos) * participant.exam.notaSimbolica : 0;
-    const redacao = participant.redacaoNota ?? null;
-    return { ponderada, redacao, total: ponderada + (redacao ?? 0) };
+    return computeNotaFromLoaded(
+      participant.answers,
+      sumPesos,
+      participant.exam.notaSimbolica,
+      participant.redacaoNota,
+    );
   }
 
   async getRanking(examId: number) {
@@ -139,14 +161,24 @@ export class ResultsService {
   }
 
   async getDetail(examId: number, participantId: number) {
-    const participant = await this.prisma.participant.findFirst({
-      where: { id: participantId, examId },
-      include: {
-        answers: { include: { quest: true } },
-      },
-    });
+    const [participant, allPeso] = await Promise.all([
+      this.prisma.participant.findFirst({
+        where: { id: participantId, examId },
+        include: {
+          exam: { select: { notaSimbolica: true } },
+          answers: { include: { quest: true } },
+        },
+      }),
+      this.prisma.question.aggregate({ where: { examId }, _sum: { peso: true } }),
+    ]);
     if (!participant) throw new NotFoundException('Participante não encontrado nesta prova');
-    const { ponderada, redacao, total } = await this.calcNota(participantId);
+    const sumPesos = allPeso._sum.peso ?? 0;
+    const { ponderada, redacao, total } = computeNotaFromLoaded(
+      participant.answers,
+      sumPesos,
+      participant.exam.notaSimbolica,
+      participant.redacaoNota,
+    );
     const questoes = participant.answers
       .map((a) => ({
         numero: a.quest.numero,

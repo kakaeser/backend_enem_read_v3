@@ -30,13 +30,14 @@ export class QuestionsService {
     }
 
     return this.prisma.$transaction(async (tx) => {
-      const existingByNumero = new Map(
-        (await tx.question.findMany({ where: { examId }, select: { id: true, numero: true } })).map((q) => [q.numero, q.id]),
-      );
+      const existing = await tx.question.findMany({
+        where: { examId },
+        select: { id: true, numero: true, examId: true },
+      });
+      const existingByNumero = new Map(existing.map((q) => [q.numero, q.id]));
+      const existingById = new Map(existing.map((q) => [q.id, q]));
       const results: any[] = [];
       for (const item of items) {
-        // id presente → update direto; sem id mas numero já existe na prova → update (evita 500 de unique)
-        const targetId = item.id ?? existingByNumero.get(item.numero);
         const data = {
           numero: item.numero,
           enunciado: item.enunciado,
@@ -44,9 +45,17 @@ export class QuestionsService {
           correctAnswer: item.correctAnswer,
           peso: item.peso ?? 1,
         };
+        let targetId: number | undefined;
+        if (item.id !== undefined) {
+          const row = existingById.get(item.id);
+          if (!row || row.examId !== examId) {
+            throw new NotFoundException(`Questão id ${item.id} não encontrada nesta prova`);
+          }
+          targetId = item.id;
+        } else {
+          targetId = existingByNumero.get(item.numero);
+        }
         if (targetId) {
-          const exists = await tx.question.findUnique({ where: { id: targetId } });
-          if (!exists || exists.examId !== examId) throw new NotFoundException(`Questão id ${targetId} não encontrada nesta prova`);
           results.push(await tx.question.update({ where: { id: targetId }, data }));
         } else {
           try {
