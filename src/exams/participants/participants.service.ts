@@ -7,7 +7,7 @@ import {
 import { PrismaService } from '../../prisma/prisma.service.js';
 import { CreateParticipantDto } from './dto/create-participant.dto.js';
 import { ListParticipantsQueryDto } from './dto/list-participants-query.dto.js';
-import { generateConsultaCodeRaw } from './consulta-code.util.js';
+import { generateUniqueConsultaCodes } from './consulta-code.util.js';
 
 @Injectable()
 export class ParticipantsService {
@@ -19,23 +19,21 @@ export class ParticipantsService {
     return exam;
   }
 
-  private async allocateConsultaCode(examId: number): Promise<string> {
-    for (let attempt = 0; attempt < 25; attempt++) {
-      const code = generateConsultaCodeRaw();
-      const exists = await this.prisma.participant.findFirst({
-        where: { examId, consultaCode: code },
-        select: { id: true },
-      });
-      if (!exists) return code;
-    }
-    throw new Error('Não foi possível gerar código de consulta único');
+  private async allocateConsultaCodes(examId: number, count: number): Promise<string[]> {
+    const rows = await this.prisma.participant.findMany({
+      where: { examId },
+      select: { consultaCode: true },
+    });
+    const taken = new Set(rows.map((r) => r.consultaCode));
+    return generateUniqueConsultaCodes(count, taken);
   }
 
   private async participantCreateData(examId: number, dto: CreateParticipantDto) {
+    const [consultaCode] = await this.allocateConsultaCodes(examId, 1);
     return {
       examId,
       nome: dto.nome,
-      consultaCode: await this.allocateConsultaCode(examId),
+      consultaCode,
       presenca: dto.presenca ?? false,
       aplicadorId: dto.aplicadorId ?? null,
     };
@@ -50,15 +48,18 @@ export class ParticipantsService {
 
   async createMany(examId: number, dtos: CreateParticipantDto[]) {
     await this.assertExam(examId);
-    const created = [];
-    for (const d of dtos) {
-      created.push(
-        await this.prisma.participant.create({
-          data: await this.participantCreateData(examId, d),
-        }),
-      );
-    }
-    return { created: created.length };
+    if (!dtos.length) return { created: 0 };
+
+    const codes = await this.allocateConsultaCodes(examId, dtos.length);
+    const data = dtos.map((d, i) => ({
+      examId,
+      nome: d.nome,
+      consultaCode: codes[i]!,
+      presenca: d.presenca ?? false,
+      aplicadorId: d.aplicadorId ?? null,
+    }));
+    const result = await this.prisma.participant.createMany({ data });
+    return { created: result.count };
   }
 
   async findAll(examId: number, query: ListParticipantsQueryDto) {

@@ -25,7 +25,7 @@
 
 [Nest](https://github.com/nestjs/nest) framework TypeScript starter repository.
 
-> **ENEM da Read v3** — Refatoração do `enem_read` (FastAPI + SQLAlchemy) para NestJS. Sistema de correção/divulgação do ENEM da Read (8ª Igreja Presbiteriana, ~60 participantes/edição, ~70 questões + redação). Fluxo MVP manual: criar prova → questões/pesos em lote → participantes (Excel `.xlsx`, só coluna `nome`) → gabarito → respostas → notas ponderadas + redação → ranking. Ver `AGENTS.md` para modelo de dados e `prisma/schema.prisma` para schema.
+> **ENEM da Read v3** — Refatoração do `enem_read` (FastAPI + SQLAlchemy) para NestJS. Sistema de correção/divulgação do ENEM da Read (8ª Igreja Presbiteriana, ~60 participantes/edição, ~70 questões + redação). Fluxo MVP manual: criar prova → questões/pesos em lote → participantes (cadastro ou `POST .../bulk`) → gabarito → respostas → notas ponderadas + redação → ranking. Ver `AGENTS.md` para modelo de dados e `prisma/schema.prisma` para schema.
 >
 > **Resultados públicos:** `GET /resultados` (tabela, só provas `completed` + 2 dias), `GET /resultados/:examId` (ranking) e `GET /resultados/:examId/:participantId` (detalhe com enunciado/alternativas/marcada/correta + `notas {ponderada, redacao, total}`). Antes de `encerramento + 2 dias` retornam `403` (divulgação por link, sem cron nem WebSocket).
 

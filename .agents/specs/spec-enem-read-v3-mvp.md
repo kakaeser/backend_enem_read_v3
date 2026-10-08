@@ -18,7 +18,7 @@ Refatorar o backend para NestJS 12 + Prisma 6 + Postgres (**Neon**), API hospeda
 4. As an ADM, I want to criar e editar questões em lote via uma única requisição (PUT bulk com array de {id?, numero, enunciado, alternativas, correctAnswer, peso}), so that eu não precise de N requests para 70 questões.
 5. As an ADM, I want cada questão ter enunciado (Text) + alternativas (Json [{letra, texto}]) + gabarito (correctAnswer) + peso, so that o frontend possa renderizar prova completa e o cálculo ponderado funcione.
 6. As an ADM, I want a unicidade por (exam_id, numero) garantida no banco, so that não existam duas questões 1 na mesma prova (mas questão 1 da prova 3 e da prova 6 podem coexistir).
-7. As an ADM, I want to cadastrar participantes manualmente e importar via CSV/Excel, so that eu possa lançar 60 alunos rapidamente.
+7. As an ADM, I want to cadastrar participantes manualmente ou em lote (`POST .../bulk`), so that eu possa lançar 60 alunos rapidamente.
 8. As an ADM, I want to informar presença e lançar redacaoNota por participante, so that a redação entre no cálculo final.
 9. As an ADM, I want to informar o gabarito manualmente (sem OCR no MVP), so that eu tenha controle total sobre o correctAnswer.
 10. As an ADM, I want to lançar respostas dos participantes manualmente (sem OMR no MVP), so that eu possa corrigir mesmo sem leitura ótica.

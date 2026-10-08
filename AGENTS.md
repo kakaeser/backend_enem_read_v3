@@ -2,7 +2,7 @@
 
 ## Project Context
 - Refatoração de `enem_read` (FastAPI + SQLAlchemy) para NestJS. Objetivo: correção e divulgação de resultados do **ENEM da Read** — prova estilo ENEM da 8ª Igreja Presbiteriana para adolescentes, ~60 participantes/edição, ~70 questões + redação.
-- Fluxo legado (manter no MVP): 1) criar prova 2) criar questões/pesos automaticamente 3) cadastrar/importar participantes via Excel (`.xlsx`, só coluna `nome`) 4) informar gabarito 5) enviar respostas 6) calcular notas ponderadas + redação 7) ranking/estatísticas/export.
+- Fluxo legado (manter no MVP): 1) criar prova 2) criar questões/pesos automaticamente 3) cadastrar participantes (manual ou `POST .../bulk`) 4) informar gabarito 5) enviar respostas 6) calcular notas ponderadas + redação 7) ranking/estatísticas/export.
 - MVP v3 é **manual only** — sem OCR (gabarito) e sem OMR (respostas). OCR/OMR ficam para depois (campos `confidence_score`/`manually_reviewed` legados podem ser mantidos nullable).
 
 ## Stack
@@ -20,7 +20,7 @@
 - `Question` (`questoes`, FK `exam_id` indexed, `numero`, `peso` default 1, `correctAnswer`, `enunciado: Text`, `alternativas: Json` `[{letra, texto}]` A–D). Unique `@@unique([exam_id, numero])`.
 - `Answer` (`resultados`, FKs `user_id`→Participant, `quest_id`→Question, **sem `exam_id`** — removido, normalizado; consistência validada na aplicação). Unique `@@unique([user_id, quest_id])`, index em `user_id`.
 - Todas as relations com `onDelete: Cascade` explícito (legado não tinha `ondelete` nos models apesar da migration `fix_schema_constraints.py`).
-- **Gotcha `presenca`**: service passa default explícito — manual/bulk nascem `true`, **import Excel nasce `false`** (decisão: ausente até confirmação). Não confie só no default do banco.
+- **Gotcha `presenca`**: service passa default explícito — create/bulk nascem `false` (ausente até confirmação via `PATCH .../presenca`). Não confie só no default do banco (`true` no schema).
 
 ## API implementada (v3, ver `.agents/specs/spec-tasks.md`)
 - Auth Adm: `POST /auth/login` → `{access_token, adm}` + cookie HttpOnly `refresh_token` (path `/auth`); `POST /auth/refresh` / `logout` leem o cookie (sem body de refresh; front `credentials: 'include'`). Públicos: `POST /auth/accept-invite`, `forgot-password` (200), `reset-password` (200). `POST /auth/aplicador` (`403` se `PENDENTE`/`REJEITADO` ou prova não `in_progress`) — só access JWT 6h, sem cookie. E-mail/convite/Excel: ver [`.agents/specs/spec-resend-email-tasks.md`](.agents/specs/spec-resend-email-tasks.md) e [`docs/front-handoff-resend-auth.md`](docs/front-handoff-resend-auth.md).
@@ -28,7 +28,7 @@
 - Aplicadores: `POST /aplicadores` (público, cria `PENDENTE`), `GET /aplicadores?provaId=`, `GET /aplicadores/me` (JWT do aplicador, polling 5s do front), `PATCH /:id/status`, `DELETE /:id` (guard).
 - Exams: `POST /exams` cria Exam + N Questions vazias em transaction; `GET /exams` paginado `{ data, meta }` (`page` default 1, `limit` default 10 máx 100, `status?`, `search?` em `nome`); `GET /:id`; `PATCH /:id`, `/:id/status`, `DELETE /:id` (guard; GETs públicos).
 - Questions (`exams/:examId/questions`, no `ExamsModule`): `PUT bulk` (upsert; `id`→update, senão resolve por `numero`; valida `correctAnswer ∈ alternativas` A–D; guard ADM), `GET /`, `GET /:id`, `DELETE /:id` (guard).
-- Participants (`exams/:examId/participants`): `POST /`, `/bulk`, `/import` (`.xlsx` 2MB, só coluna `nome`), `GET /` e `GET /presentes` paginados `{ data, meta }` (`page`, `limit`, `search?` em `nome`; presentes só `presenca: true`), `PATCH /:id/presenca`, `PATCH /:id/redacao` (dedicados), `DELETE /:id` (guard).
+- Participants (`exams/:examId/participants`): `POST /`, `/bulk`, `GET /` e `GET /presentes` paginados `{ data, meta }` (`page`, `limit`, `search?` em `nome`; presentes só `presenca: true`), `PATCH /:id/presenca`, `PATCH /:id/redacao` (dedicados), `DELETE /:id` (guard).
 - Answers (`exams/:examId/answers`): `POST /bulk` (upsert; `400` se `user`/`quest` de provas diferentes), `PATCH /:id`, `GET /participant/:participantId` (guard).
 - Results: `GET /exams/:examId/results` + `/:participantId` (guard, sem guarda de data); públicos `GET /resultados` (tabela, só `completed` + 2d), `GET /resultados/:examId`, `GET /resultados/:examId/:participantId` (`403` antes de `encerramento+2d`). Ranking: `{ponderada, redacao, total, acertos, respondidas}` (`respondidas===0 && redacao==null` → front exibe `"-"`); stats embutido no ranking.
 

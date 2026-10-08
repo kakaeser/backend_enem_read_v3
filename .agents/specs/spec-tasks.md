@@ -60,9 +60,9 @@
 ### 6a. Participants
 - [X] `src/exams/participants/` dentro de `ExamsModule` herdando `:examId` (decisão: subpasta, FK examId)
 - [X] DTOs: `create-participant.dto.ts` (nome, presenca?, aplicadorId?), `bulk-participants.dto.ts`, `update-presenca.dto.ts`, `update-redacao.dto.ts` (0–1000, nullable)
-- [X] `participants.service.ts` — `create`/`createMany` (default `presenca true`), `importExcel` (exceljs, 1ª aba, coluna A `nome`, pula cabeçalho e vazias; decisão: só `nome`, sem redação na planilha; importados nascem `presenca false` até confirmação), `findAll` com `_count answers`, `updatePresenca`/`updateRedacao`/`remove` com `assertOwned` (valida examId)
-- [X] `participants.controller.ts` — `POST /exams/:examId/participants`, `POST .../bulk`, `POST .../import` (FileInterceptor `file`, 2MB, valida .xlsx), `GET ...` , `PATCH .../:id/presenca` e `PATCH .../:id/redacao` dedicados (decisão: sem PATCH genérico), todos com JwtAuthGuard
-- [X] Teste manual: create + import xlsx 2 nomes (linha vazia ignorada) + list ordenada + `presenca false` + `redacao 850`
+- [X] `participants.service.ts` — `create`/`createMany` (default `presenca false` até `PATCH presenca`; `createMany` com batch de `consultaCode` + `createMany`), `findAll` com `_count answers`, `updatePresenca`/`updateRedacao`/`remove` com `assertOwned` (valida examId)
+- [X] `participants.controller.ts` — `POST /exams/:examId/participants`, `POST .../bulk`, `GET ...` , `PATCH .../:id/presenca` e `PATCH .../:id/redacao` dedicados (decisão: sem PATCH genérico), todos com JwtAuthGuard
+- [X] Teste manual: create + bulk JSON + list ordenada + `presenca false` + `redacao 850`
 
 ### 6b. Answers
 - [X] DTOs: `answer-item.dto.ts` (userId, questId, alternativa), `bulk-answers.dto.ts`, `update-answer.dto.ts`
@@ -81,16 +81,16 @@
 ## 8. E2E & Qualidade [X]
 
 - [X] Decisão: e2e com **Prisma mockado** (`test/mocks/in-memory-prisma.ts`, sem Neon) — seam único HTTP via `Test.createTestingModule(AppModule)` + `supertest` + `overrideProvider(PrismaService)`
-- [X] `test/enem-flow.e2e-spec.ts` (14 its): login 401/201, refresh rotação + revogação 401, exam + N vazias, bulk gabarito + 400 inválido, participant + import xlsx + `PATCH presenca/redacao`, answers bulk + divergência 400, ranking `total=ponderada+redacao`, detalhe marcada/correta, tabela exclui `in_progress`, público 403 → `completed`+`encerramento-3d` 200, cleanup cascade
+- [X] `test/enem-flow.e2e-spec.ts` (14 its): login 401/201, refresh rotação + revogação 401, exam + N vazias, bulk gabarito + 400 inválido, participant + bulk JSON + `PATCH presenca/redacao`, answers bulk + divergência 400, ranking `total=ponderada+redacao`, detalhe marcada/correta, tabela exclui `in_progress`, público 403 → `completed`+`encerramento-3d` 200, cleanup cascade
 - [X] `src/exams/results/results.service.spec.ts` unit real (tudo certo/parcial/sem respostas/redacao null/ordenação+respondidas/ausente fora) + demais `*.spec.ts` com `InMemoryPrisma` e `overrideGuard(JwtAuthGuard)`
 - [X] `npm run lint && npm run build && npm run test (19) && npm run test:e2e (15) && npx prisma validate` verdes
-- [X] Fixes achados pelo e2e: `participants.service` default `presenca` → `true` (estava `false`, sobrescrevia o DB default) e `auth.service issueTokens` com `jti: randomUUID()` (dois logins no mesmo segundo geravam refresh idêntico → P2002 500)
+- [X] Fixes achados pelo e2e: `auth.service issueTokens` com `jti: randomUUID()` (dois logins no mesmo segundo geravam refresh idêntico → P2002 500); `presenca` no service permanece `false` por padrão (ausente até confirmação)
 - [X] `Dockerfile` (node:22-slim multi-stage, `prisma generate` no build, `migrate deploy && node dist/main` no start) — deploy: **Render** com env `DATABASE_URL,DIRECT_URL,JWT_SECRET,JWT_REFRESH_SECRET,FRONTEND_URL` (não usar `nest deploy` / Cloud Run)
 
 ## 9. Docs & Housekeeping [X] parcial
 
-- [X] `AGENTS.md` sincronizado: sem Socket.IO, Neon (não Supabase), JWT com refresh + aplicador 6h, data model real (sem `role`, `status` enum, sem `exam_id` em Answer, `RefreshToken`), API implementada por módulo, `presenca` import=false, `PORT 3030`, testes com mock, structure com `prisma/seed-test.ts` + `test/mocks` + `Dockerfile`
-- [X] `README.md` (edição incremental, boilerplate Nest preservado): `GET /resultados` + guarda 2 dias, `.xlsx` no fluxo, `seed:test`, `PORT 3030`, testes com mock, envs completas no deploy
+- [X] `AGENTS.md` sincronizado: sem Socket.IO, Neon (não Supabase), JWT com refresh + aplicador 6h, data model real (sem `role`, `status` enum, sem `exam_id` em Answer, `RefreshToken`), API implementada por módulo, `presenca` default false no service, `PORT 3030`, testes com mock, structure com `prisma/seed-test.ts` + `test/mocks` + `Dockerfile`
+- [X] `README.md` (edição incremental, boilerplate Nest preservado): `GET /resultados` + guarda 2 dias, participantes manual/bulk (sem import planilha), `seed:test`, `PORT 3030`, testes com mock, envs completas no deploy
 - [X] `specs/spec-enem-read-v3-mvp.md` — infra Neon + Render (não Supabase/Cloud Run)
 - [ ] Publicar no tracker com label `ready-for-agent` após `/setup-matt-pocock-skills`
 
