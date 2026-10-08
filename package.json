@@ -46,13 +46,13 @@
     "passport-jwt": "^4.0.1",
     "reflect-metadata": "^0.2.2",
     "resend": "^6.30.0",
-    "rxjs": "^7.8.1"
+    "rxjs": "^7.8.1",
+    "@nestjs/swagger": "^12.0.2"
   },
   "devDependencies": {
     "@nestjs/cli": "^12.0.0",
     "@nestjs/mau": "^0.2.6",
     "@nestjs/schematics": "^12.0.0",
-    "@nestjs/swagger": "^12.0.2",
     "@nestjs/testing": "^12.0.1",
     "@types/bcrypt": "^6.0.0",
     "@types/better-sqlite3": "^9.6.0",
