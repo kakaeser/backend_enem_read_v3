@@ -1,7 +1,10 @@
 import { Controller, Get, Param, ParseIntPipe, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { ResultsService } from './results.service.js';
 
+@ApiTags('results')
+@ApiBearerAuth('access-token')
 @Controller('exams/:examId/results')
 @UseGuards(JwtAuthGuard)
 export class ResultsController {

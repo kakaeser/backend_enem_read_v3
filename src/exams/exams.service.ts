@@ -2,7 +2,9 @@ import { BadRequestException, Injectable, Logger, NotFoundException } from '@nes
 import { buildExamResultsEmail } from '../mail/mail.templates.js';
 import { MailService } from '../mail/mail.service.js';
 import { PrismaService } from '../prisma/prisma.service.js';
+import { buildPaginatedResponse, nomeSearchWhere, resolvePagination } from '../common/pagination.js';
 import { CreateExamDto } from './dto/create-exam.dto.js';
+import { ListExamsQueryDto } from './dto/list-exams-query.dto.js';
 import { UpdateExamDto } from './dto/update-exam.dto.js';
 import { ExamStatusDto } from './dto/update-status.dto.js';
 import { ResultsExportService } from './results/results-export.service.js';
@@ -47,12 +49,23 @@ export class ExamsService {
     });
   }
 
-  async findAll(status?: string) {
-    return this.prisma.exam.findMany({
-      where: status ? { status: status as any } : undefined,
-      orderBy: { createdAt: 'desc' },
-      include: { _count: { select: { questions: true, participants: true } } },
-    });
+  async findAll(query: ListExamsQueryDto) {
+    const { page, limit, skip, take } = resolvePagination(query.page, query.limit);
+    const where = {
+      ...(query.status ? { status: query.status as any } : {}),
+      ...nomeSearchWhere(query.search),
+    };
+    const [total, data] = await Promise.all([
+      this.prisma.exam.count({ where }),
+      this.prisma.exam.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        include: { _count: { select: { questions: true, participants: true } } },
+        skip,
+        take,
+      }),
+    ]);
+    return buildPaginatedResponse(data, total, page, limit);
   }
 
   async findOne(id: number) {

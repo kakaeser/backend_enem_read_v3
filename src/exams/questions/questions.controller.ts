@@ -1,12 +1,15 @@
 import { Body, Controller, Delete, Get, Param, ParseIntPipe, Put, UseGuards } from '@nestjs/common';
+import { ApiBearerAuth, ApiTags } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../../auth/guards/jwt-auth.guard.js';
 import { BulkQuestionsDto } from './dto/bulk-questions.dto.js';
 import { QuestionsService } from './questions.service.js';
 
+@ApiTags('questions')
 @Controller('exams/:examId/questions')
 export class QuestionsController {
   constructor(private questions: QuestionsService) {}
 
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Put('bulk')
   bulk(
@@ -26,6 +29,7 @@ export class QuestionsController {
     return this.questions.findOne(examId, id);
   }
 
+  @ApiBearerAuth('access-token')
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
   remove(@Param('examId', ParseIntPipe) examId: number, @Param('id', ParseIntPipe) id: number) {

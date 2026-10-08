@@ -1,8 +1,10 @@
 import { Body, Controller, Get, Param, ParseIntPipe, Post, Req } from '@nestjs/common';
+import { ApiTags } from '@nestjs/swagger';
 import type { Request } from 'express';
 import { ConsultaResultadoDto } from './dto/consulta-resultado.dto.js';
 import { ResultsService } from './results.service.js';
 
+@ApiTags('resultados (público)')
 @Controller('resultados')
 export class PublicResultsController {
   constructor(private results: ResultsService) {}
